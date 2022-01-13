@@ -129,10 +129,11 @@ class CarlaSimulator(BaseSimulator):
         Init Carla simulator.
         """
         super().__init__(cfg)
+        # omit this procedure
         # Check Carla API version
-        dist = pkg_resources.get_distribution("carla")
-        if LooseVersion(dist.version) < LooseVersion('0.9.8'):
-            raise ImportError("CARLA version 0.9.8 or newer required. CARLA version found: {}".format(dist))
+        # dist = pkg_resources.get_distribution("carla")
+        # if LooseVersion(dist.version) < LooseVersion('0.9.8'):
+        #     raise ImportError("CARLA version 0.9.8 or newer required. CARLA version found: {}".format(dist))
 
         # Create the client that will send the requests to the simulator
         if client is None:
