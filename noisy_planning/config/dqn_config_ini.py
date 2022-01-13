@@ -1,12 +1,14 @@
 from easydict import EasyDict
-
-sac_config = dict(
-    exp_name='td32_bev32_buf4e5_lr1e4_bs128_ns3000_update4_train_ft',
+import torch.utils.cpp_extension
+dqn_config = dict(
+    exp_name='dqn21_bev32_buf2e5_lr1e4_bs128_ns3000_update4_train_ft',
     env=dict(
+        # Collect and eval env num
         collector_env_num=7,
         evaluator_env_num=1,
         simulator=dict(
             town='Town01',
+            delta_seconds=0.05,
             disable_two_wheels=True,
             verbose=False,
             waypoint_num=32,
@@ -24,11 +26,33 @@ sac_config = dict(
                 ),
             )
         ),
+        enable_detector=False,
+        detector=dict(
+            model_repo="openpcdet",
+            model_name="pointpillar",
+            ckpt="/cpfs2/user/juxiaoliang/checkpoint_epoch_160.pth",
+            max_batch_size=16,
+            data_config=dict(
+                class_names=['Car', 'Pedestrian'],
+                point_feature_encoder=dict(
+                    num_point_features=4,
+                ),
+                depth_downsample_factor=None
+            ),
+            score_thres={
+                "vehicle": 0.6,
+                "walker": 0.5
+            }
+        ),
         col_is_failure=True,
-        stuck_is_failure=True,
+        stuck_is_failure=False,
         ignore_light=True,
-        finish_reward=300,
-        replay_path='./td3_video',
+        ran_light_is_failure=False,
+        off_road_is_failure=True,
+        wrong_direction_is_failure=True,
+        off_route_is_failure=True,
+        off_route_distance=7.5,
+        replay_path='./dqn_video',
         visualize=dict(
             type='birdview',
         ),
@@ -45,53 +69,64 @@ sac_config = dict(
             eval=dict()
         ),
         wrapper=dict(
+            # Collect and eval suites for training
             collect=dict(suite='train_ft', ),
             eval=dict(suite='FullTown02-v1', ),
         ),
     ),
     server=[
-        dict(carla_host='localhost', carla_ports=[9000, 9016, 2]),
+        # Need to change to you own carla server
+        dict(carla_host='localhost', carla_ports=[9000, 9032, 2]),
     ],
     policy=dict(
         cuda=True,
         priority=True,
-        model=dict(),
+        nstep=1,
+        model=dict(
+            obs_shape=[5, 32, 32],
+        ),
         learn=dict(
-            batch_size=64,
-            learning_rate_actor=0.0001,
-            learning_rate_critic=0.0001,
+            batch_size=128,
+            learning_rate=0.0001,
             weight_decay=0.0001,
+            target_update_freq=100,
             learner=dict(
                 hook=dict(
+                    # Pre-train model path
                     load_ckpt_before_run='',
                     log_show_after_iter=1000,
                 ),
             ),
         ),
         collect=dict(
-            noise_sigma=0.1,
-            n_sample=3000,
+            pre_sample_num=500,
+            n_sample=200,
             collector=dict(
-                collect_print_freq=1000,
+                collect_print_freq=500,
                 deepcopy_obs=True,
                 transform_obs=True,
             ),
         ),
         eval=dict(
             evaluator=dict(
-                eval_freq=5000,
+                eval_freq=2000,
                 n_episode=5,
                 stop_rate=0.7,
                 transform_obs=True,
             ),
         ),
         other=dict(
+            eps=dict(
+                type='exp',
+                start=0.95,
+                end=0.1,
+                decay=10000,
+            ),
             replay_buffer=dict(
-                replay_buffer_size=400000,
-                max_use=16,
+                replay_buffer_size=200000,
                 monitor=dict(
                     sampled_data_attr=dict(
-                        print_freq=100,  # times
+                        print_freq=100,
                     ),
                     periodic_thruput=dict(
                         seconds=120,
@@ -102,4 +137,4 @@ sac_config = dict(
     ),
 )
 
-default_train_config = EasyDict(sac_config)
+default_train_config = EasyDict(dqn_config)

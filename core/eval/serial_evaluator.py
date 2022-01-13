@@ -45,6 +45,8 @@ class SerialEvaluator(BaseEvaluator):
         n_episode=10,
         # stop value of success rate
         stop_rate=1,
+        # max steps to evaluate to avoid too long sequences
+        env_max_steps = 128,
     )
 
     def __init__(
@@ -60,6 +62,7 @@ class SerialEvaluator(BaseEvaluator):
         self._transform_obs = self._cfg.transform_obs
         self._default_n_episode = self._cfg.n_episode
         self._stop_rate = self._cfg.stop_rate
+        self._env_max_steps = self._cfg.env_max_steps
 
         self._last_eval_iter = 0
         self._max_success_rate = 0
@@ -145,6 +148,7 @@ class SerialEvaluator(BaseEvaluator):
         episode_count = 0
         results = defaultdict(list)
 
+        env_steps = {}
         with self._timer:
             while episode_count < n_episode:
                 obs = self._env_manager.ready_obs
@@ -154,11 +158,36 @@ class SerialEvaluator(BaseEvaluator):
                 actions = {env_id: output['action'] for env_id, output in policy_output.items()}
                 timesteps = self._env_manager.step(actions)
                 for env_id, t in timesteps.items():
+                    if env_id not in env_steps.keys():
+                        env_steps[env_id] = 0
+                    if t.info['stuck']:
+                        self._policy.reset([env_id])
+                        env_steps[env_id] = 0
+                        episode_count += 1
+                        self._logger.info(
+                            "[EVALUATOR] env {} stop episode for it is stucked".format(env_id))
+                        continue
+                    if env_steps[env_id] > self._env_max_steps:
+                        episode_count += 1
+                        result = {
+                            'stuck': t.info['stuck'],
+                            'step': int(t.info['tick']),
+                        }
+                        self._logger.info(
+                            "[EVALUATOR] env {} stop episode for it is too long,"
+                            " stuck: {}, current episode: {}, step: {}".format(
+                                env_id, result['stuck'], episode_count, result['step']
+                            ))
+                        self._policy.reset([env_id])
+                        env_steps[env_id] = 0
+                        continue
                     if t.info.get('abnormal', False):
                         self._policy.reset([env_id])
+                        env_steps[env_id] = 0
                         continue
                     if t.done:
                         self._policy.reset([env_id])
+                        env_steps[env_id] = 0
                         result = {
                             'reward': t.info['final_eval_reward'],
                             'success': t.info['success'],
@@ -172,6 +201,7 @@ class SerialEvaluator(BaseEvaluator):
                                 env_id, result['reward'], episode_count
                             )
                         )
+                    env_steps[env_id] += 1
                 if self._env_manager.done:
                     break
 

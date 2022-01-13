@@ -22,6 +22,25 @@ DEFAULT_STEER_LIST = [
     0.5,
     0.8,
 ]
+# birdview dimension, dim
+# bev_data['road'],1
+# bev_data['lane'],1
+# bev_data['traffic'],3
+# bev_data['vehicle'],1
+# bev_data['pedestrian'],1
+# bev_data['hero'],1
+# bev_data['route'],1
+
+
+def get_obs_out(obs):
+    obs_out = {
+        'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
+        'speed': (obs['speed'] / 25).astype(np.float32),
+        'bev_elements': obs['birdview_initial_dict']
+    }
+    if 'toplidar' in obs.keys():
+        obs_out['lidar_points'] = obs['toplidar']
+    return obs_out
 
 
 class DiscreteEnvWrapper(gym.Wrapper):
@@ -37,10 +56,7 @@ class DiscreteEnvWrapper(gym.Wrapper):
 
     def reset(self, *args, **kwargs) -> Any:
         obs = super().reset(*args, **kwargs)
-        obs_out = {
-            'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
-            'speed': (obs['speed'] / 25).astype(np.float32),
-        }
+        obs_out = get_obs_out(obs)
         return obs_out
 
     def step(self, id):
@@ -57,10 +73,7 @@ class DiscreteEnvWrapper(gym.Wrapper):
             'brake': acc[1],
         }
         obs, reward, done, info = super().step(action)
-        obs_out = {
-            'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
-            'speed': (obs['speed'] / 25).astype(np.float32),
-        }
+        obs_out = get_obs_out(obs)
         return obs_out, reward, done, info
 
     def __repr__(self) -> str:
@@ -80,10 +93,7 @@ class MultiDiscreteEnvWrapper(gym.Wrapper):
 
     def reset(self, *args, **kwargs) -> Any:
         obs = super().reset(*args, **kwargs)
-        obs_out = {
-            'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
-            'speed': (obs['speed'] / 25).astype(np.float32),
-        }
+        obs_out = get_obs_out(obs)
         return obs_out
 
     def step(self, action_ids):
@@ -101,10 +111,7 @@ class MultiDiscreteEnvWrapper(gym.Wrapper):
             'brake': acc[1],
         }
         obs, reward, done, info = super().step(action)
-        obs_out = {
-            'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
-            'speed': (obs['speed'] / 25).astype(np.float32),
-        }
+        obs_out = get_obs_out(obs)
         return obs_out, reward, done, info
 
     def __repr__(self) -> str:
@@ -115,10 +122,7 @@ class ContinuousEnvWrapper(gym.Wrapper):
 
     def reset(self, *args, **kwargs) -> Any:
         obs = super().reset(*args, **kwargs)
-        obs_out = {
-            'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
-            'speed': (obs['speed'] / 25).astype(np.float32),
-        }
+        obs_out = get_obs_out(obs)
         return obs_out
 
     def step(self, action):
@@ -137,10 +141,7 @@ class ContinuousEnvWrapper(gym.Wrapper):
             'brake': brake,
         }
         obs, reward, done, info = super().step(action)
-        obs_out = {
-            'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
-            'speed': (obs['speed'] / 25).astype(np.float32),
-        }
+        obs_out = get_obs_out(obs)
         return obs_out, reward, done, info
 
     def __repr__(self) -> str:

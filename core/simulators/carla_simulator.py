@@ -67,7 +67,7 @@ class CarlaSimulator(BaseSimulator):
     the configurations may be changed by the input arguments while others remain by default.
 
     The simulator stores and gets some information from a static class ``CarlaDataProvider``
-    to avoid frequently sending message to Carla server and speed up.
+    to avoid frequently sending message to Carla server and speed up.k
 
     Up to now, it uses Carla version 0.9.9.
 
@@ -103,8 +103,8 @@ class CarlaSimulator(BaseSimulator):
         delta_seconds=0.1,
         no_rendering=False,
         auto_pilot=False,
-        n_vehicles=0,
-        n_pedestrians=0,
+        n_vehicles=200,
+        n_pedestrians=200,
         disable_two_wheels=False,
         col_threshold=400,
         waypoint_num=20,
@@ -129,10 +129,11 @@ class CarlaSimulator(BaseSimulator):
         Init Carla simulator.
         """
         super().__init__(cfg)
+        # omit this procedure
         # Check Carla API version
-        dist = pkg_resources.get_distribution("carla")
-        if LooseVersion(dist.version) < LooseVersion('0.9.8'):
-            raise ImportError("CARLA version 0.9.8 or newer required. CARLA version found: {}".format(dist))
+        # dist = pkg_resources.get_distribution("carla")
+        # if LooseVersion(dist.version) < LooseVersion('0.9.8'):
+        #     raise ImportError("CARLA version 0.9.8 or newer required. CARLA version found: {}".format(dist))
 
         # Create the client that will send the requests to the simulator
         if client is None:
@@ -577,7 +578,7 @@ class CarlaSimulator(BaseSimulator):
             elif obs_item.type == 'bev':
                 key = obs_item.name
                 sensor_data.update({key: get_birdview(self._bev_wrapper.get_bev_data())})
-
+                sensor_data.update({key + "_initial_dict": self._bev_wrapper.get_bev_data()})
         return sensor_data
 
     def get_information(self) -> Dict:
