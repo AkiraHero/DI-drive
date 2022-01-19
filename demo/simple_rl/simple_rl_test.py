@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/home/xlju/Project/carla_099/PythonAPI/carla/dist/carla-0.9.9-py3.7-linux-x86_64.egg")
+
 import os
 import argparse
 import torch
@@ -40,7 +43,7 @@ eval_config = dict(
         ignore_light=True,
         visualize=dict(
             type='birdview',
-            #outputs=['show']
+            outputs=['show']
         ),
         wrapper=dict(
             suite='FullTown02-v1',

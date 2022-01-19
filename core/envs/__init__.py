@@ -15,7 +15,8 @@ if 'carla' in SIMULATORS:
     from .scenario_carla_env import ScenarioCarlaEnv
     env_map.update({
         "SimpleCarla-v1": 'core.envs.simple_carla_env.SimpleCarlaEnv',
-        "ScenarioCarla-v1": 'core.envs.scenario_carla_env.ScenarioCarlaEnv'
+        "ScenarioCarla-v1": 'core.envs.scenario_carla_env.ScenarioCarlaEnv',
+        "CarlaWithDet-v1": 'noisy_planning.extended_envs.carla_env_with_detection'
     })
 
 if 'metadrive' in SIMULATORS:

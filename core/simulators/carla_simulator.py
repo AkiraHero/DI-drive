@@ -67,7 +67,7 @@ class CarlaSimulator(BaseSimulator):
     the configurations may be changed by the input arguments while others remain by default.
 
     The simulator stores and gets some information from a static class ``CarlaDataProvider``
-    to avoid frequently sending message to Carla server and speed up.
+    to avoid frequently sending message to Carla server and speed up.k
 
     Up to now, it uses Carla version 0.9.9.
 
