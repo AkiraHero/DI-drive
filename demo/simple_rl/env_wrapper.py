@@ -40,6 +40,7 @@ class DiscreteEnvWrapper(gym.Wrapper):
         obs_out = {
             'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
             'speed': (obs['speed'] / 25).astype(np.float32),
+            'lidar_points': obs['toplidar'],   #todo add it to config
         }
         return obs_out
 
@@ -60,6 +61,7 @@ class DiscreteEnvWrapper(gym.Wrapper):
         obs_out = {
             'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
             'speed': (obs['speed'] / 25).astype(np.float32),
+            'lidar_points': obs['toplidar'],
         }
         return obs_out, reward, done, info
 
@@ -83,6 +85,7 @@ class MultiDiscreteEnvWrapper(gym.Wrapper):
         obs_out = {
             'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
             'speed': (obs['speed'] / 25).astype(np.float32),
+            'lidar_points': obs['toplidar'],
         }
         return obs_out
 
@@ -104,6 +107,7 @@ class MultiDiscreteEnvWrapper(gym.Wrapper):
         obs_out = {
             'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
             'speed': (obs['speed'] / 25).astype(np.float32),
+            'lidar_points': obs['toplidar'],
         }
         return obs_out, reward, done, info
 
@@ -118,6 +122,7 @@ class ContinuousEnvWrapper(gym.Wrapper):
         obs_out = {
             'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
             'speed': (obs['speed'] / 25).astype(np.float32),
+            'lidar_points': obs['toplidar'],
         }
         return obs_out
 
@@ -140,6 +145,7 @@ class ContinuousEnvWrapper(gym.Wrapper):
         obs_out = {
             'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
             'speed': (obs['speed'] / 25).astype(np.float32),
+            'lidar_points': obs['toplidar'],
         }
         return obs_out, reward, done, info
 
