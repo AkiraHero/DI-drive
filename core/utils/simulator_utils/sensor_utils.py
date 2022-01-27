@@ -34,6 +34,7 @@ DEFAULT_LIDAR_CONFIG = {
     'position': [0, 0.0, 1.4],
     'rotation': [0, -90, 0],
     'draw': False,
+    'fixed_pt_num': None
 }
 
 DEFAULT_GNSS_CONFIG = {
@@ -145,7 +146,7 @@ class SensorHelper(object):
 
             sensor_transform = carla.Transform(sensor_location, sensor_rotation)
             sensor = world.spawn_actor(sensor_bp, sensor_transform, attach_to=vehicle)
-            sensor.listen(CallBack(obs_item.name, obs_item.type, self))
+            sensor.listen(CallBack(obs_item.name, obs_item.type, self, obs_item))
             self.register_sensor(obs_item.name, sensor)
 
     def clean_up(self) -> None:
@@ -228,13 +229,14 @@ class CallBack(object):
     Class the sensors listen to in order to receive their data each frame
     """
 
-    def __init__(self, tag: str, type: str, wrapper: Any) -> None:
+    def __init__(self, tag: str, type: str, wrapper: Any, config=None) -> None:
         """
         Initializes the call back
         """
         self._tag = tag
         self._type = type
         self._data_wrapper = wrapper
+        self._config = config
 
     def __call__(self, data: Any) -> None:
         """
@@ -265,14 +267,26 @@ class CallBack(object):
         img = copy.deepcopy(img)
         self._data_wrapper.update_sensor(tag, img, image.frame)
 
+    # carla 0.9.11: XYZI 0.9.9: XYZ
     def _parse_lidar_cb(self, lidar_data: Any, tag: str) -> None:
         """
         parses lidar sensors
         """
         points = np.frombuffer(lidar_data.raw_data, dtype=np.dtype('f4'))
         points = copy.deepcopy(points)
-        points = np.reshape(points, (int(points.shape[0] / 3), 3))
-        self._data_wrapper.update_sensor(tag, points, lidar_data.frame)
+        points = np.reshape(points, (points.shape[0] // 4, 4))
+        out_lidar_data = dict(points=points, lidar_pt_num=points.shape[0])
+        if self._config is not None:
+            if isinstance(self._config, dict) and "fixed_pt_num" in self._config.keys():
+                fixed_num = self._config['fixed_pt_num']
+                lidar_pt_num = points.shape[0]
+                target_shape = [fixed_num, *(points.shape[1:])]
+                new_pts = np.zeros(target_shape, dtype=points.dtype)
+                ind_limit = min(fixed_num, lidar_pt_num)
+                new_pts[:ind_limit, ...] = points[:ind_limit, ...]
+                out_lidar_data = dict(points=new_pts, lidar_pt_num=lidar_pt_num)
+        self._data_wrapper.update_sensor(tag, out_lidar_data, lidar_data.frame)
+
 
     def _parse_gnss_cb(self, gnss_data: Any, tag: str) -> None:
         """

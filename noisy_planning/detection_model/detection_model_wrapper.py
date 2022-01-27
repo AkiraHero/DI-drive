@@ -1,12 +1,13 @@
 import logging
 
+import cv2
 import torch.nn as nn
 from easydict import EasyDict
 import yaml
 import numpy as np
 import torch
 import time
-
+from noisy_planning.debug_utils import plot_pcl,visualize_points
 
 
 # point_cloud_range = np.array([0, -40, -3, 70.4, 40, 1]).astype(np.float32)
@@ -24,7 +25,7 @@ DATA_INFO_KITTI_PVRCNN = EasyDict(dict(
 ))
 
 DATA_INFO_KITTI_POINTPILLAR = EasyDict(dict(
-    class_names=['Car', 'Pedestrian', 'Cyclist'],
+    class_names=['Car', 'Pedestrian'],
     point_feature_encoder=dict(
         num_point_features=4, #carla produce only xyz without intensity
     ),
@@ -47,9 +48,13 @@ DATA_INFO_KITTI_POINTPILLAR = EasyDict(dict(
 DEFAULT_DETECTION_CFG = dict(
     model_repo="openpcdet",
     model_name="pointpillar",
-    repo_config_file="/home/xlju/Project/Model_behavior/DI-drive/noisy_planning/config/openpcdet_config/pointpillar.yaml",
-    ckpt="/home/xlju/Downloads/pointpillar_7728.pth",
-    data_config=DATA_INFO_KITTI_POINTPILLAR
+    repo_config_file="/home/xlju/Project/Model_behavior/DI-drive/noisy_planning/config/openpcdet_config/pointpillar_carla.yaml",
+    ckpt="/home/xlju/Downloads/pointpillar/pointpillar/ckpt/checkpoint_epoch_160.pth",
+    data_config=DATA_INFO_KITTI_POINTPILLAR,
+    score_thres={
+        "vehicle": 0.6,
+        "walker": 0.4
+    }
 )
 
 
@@ -92,7 +97,7 @@ class OpenpcdetModel(EmbeddedDetectionModelBase):
         DATA_INFO.voxel_size = self.cfg.repo_config.DATA_CONFIG.DATA_PROCESSOR[2].VOXEL_SIZE
         DATA_INFO.point_cloud_range = point_cloud_range
         DATA_INFO.grid_size = np.round((point_cloud_range[3:6] - point_cloud_range[0:3]) / DATA_INFO.voxel_size).astype(np.int64)
-
+        self.score_thres = cfg.score_thres
 
         self.model = build_network(model_cfg=cfg.repo_config.MODEL,
                                    num_class=len(cfg.repo_config.CLASS_NAMES),
@@ -114,6 +119,16 @@ class OpenpcdetModel(EmbeddedDetectionModelBase):
         data = self.data_processor.forward(data_dict=data)
         return data
 
+    def post_process(self, batch_dt):
+        for det_res in batch_dt:
+            scores = det_res['pred_scores']
+            labels = det_res['pred_labels']
+            valid_inx_vehicle = ((scores > self.score_thres['vehicle']) & (labels == 1)).nonzero()
+            valid_inx_walker = ((scores > self.score_thres['walker']) & (labels == 2)).nonzero()
+            valid_inx = torch.cat([valid_inx_vehicle, valid_inx_walker], dim=0).squeeze(1)
+            det_res['pred_scores'] = det_res['pred_scores'][valid_inx, ...]
+            det_res['pred_labels'] = det_res['pred_labels'][valid_inx, ...]
+            det_res['pred_boxes'] = det_res['pred_boxes'][valid_inx, ...]
 
     def forward(self, data_dict_list):
         with torch.no_grad():
@@ -125,11 +140,11 @@ class OpenpcdetModel(EmbeddedDetectionModelBase):
             from pcdet.models import load_data_to_gpu
             batch_dict = DatasetTemplate.collate_batch(data_dict_list)
             load_data_to_gpu(batch_dict)
-            for i in range(10):
-                st3 = time.time()
-                det_res = self.model(batch_dict)
-                st4 = time.time()
-                print("total inference time", st4 - st3)
+            # img = plot_pcl(data_dict_list[0]['points'][:, :3])
+            # cv2.imshow("bev-pcl", img)
+            # cv2.waitKey(1)
+            det_res, _ = self.model(batch_dict)
+            self.post_process(det_res)
             return det_res
 
     def merge2batch(self):
@@ -140,10 +155,9 @@ class OpenpcdetModel(EmbeddedDetectionModelBase):
 
 class DetectionModelWrapper:
     def __init__(self, cfg=None):
-        if cfg is None:
-            self.detection_cfg = EasyDict(DEFAULT_DETECTION_CFG)
-        else:
-            self.detection_cfg = cfg
+        self.detection_cfg = EasyDict(DEFAULT_DETECTION_CFG)
+        if cfg is not None:
+            self.detection_cfg.update(cfg)
         self.model = None
         self.init_detection_model(self.detection_cfg)
 

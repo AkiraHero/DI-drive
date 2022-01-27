@@ -14,8 +14,7 @@ from core.utils.env_utils.stuck_detector import StuckDetector
 from core.utils.simulator_utils.carla_utils import lane_mid_distance
 
 
-def fix_lidar_points_num(obs_out):
-    max_lidar_pt_num = 60000
+def fix_lidar_points_num(obs_out, max_lidar_pt_num):
     lidar_pt_num = obs_out['toplidar'].shape[0]
     target_shape = [max_lidar_pt_num, *(obs_out['toplidar'].shape[1:])]
     new_pts = np.zeros(target_shape, dtype=obs_out['toplidar'].dtype)
@@ -367,8 +366,6 @@ class SimpleCarlaEnv(BaseDriveEnv):
             self._render_buffer = sensor_data[self._visualize_cfg.type].copy()
             if self._visualize_cfg.type == 'birdview':
                 self._render_buffer = visualize_birdview(self._render_buffer)
-
-        fix_lidar_points_num(obs)
         return obs
 
     def compute_reward(self) -> Tuple[float, Dict]:

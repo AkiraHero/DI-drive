@@ -4,7 +4,7 @@ dqn_config = dict(
     exp_name='dqn21_bev32_buf2e5_lr1e4_bs128_ns3000_update4_train_ft',
     env=dict(
         # Collect and eval env num
-        collector_env_num=3,
+        collector_env_num=1,
         evaluator_env_num=1,
         simulator=dict(
             town='Town01',
@@ -20,21 +20,22 @@ dqn_config = dict(
                 dict(
                     name='birdview',
                     type='bev',
-                    size=[32, 32],
-                    pixels_per_meter=1,
-                    pixels_ahead_vehicle=14,
+                    size=[160, 160],
+                    pixels_per_meter=5,
+                    pixels_ahead_vehicle=100,
                 ),
                 dict(
                     name='toplidar',
                     type='lidar',
                     channels=64,
-                    range=30,
+                    range=32,
                     points_per_second=1280000,
                     rotation_frequency=20,
-                    upper_fov=10,
+                    upper_fov=10.0,
                     lower_fov=-45.0,
                     position=[0, 0.0, 1.6],
                     rotation=[0, 0, 0],
+                    fixed_pt_num=40000,
                 ),
             )
         ),
@@ -76,7 +77,9 @@ dqn_config = dict(
         cuda=True,
         priority=True,
         nstep=1,
-        model=dict(),
+        model=dict(
+            obs_shape=[5, 160, 160],
+        ),
         learn=dict(
             batch_size=128,
             learning_rate=0.0001,
@@ -91,7 +94,7 @@ dqn_config = dict(
             ),
         ),
         collect=dict(
-            n_sample=3000,
+            n_sample=10,
             collector=dict(
                 collect_print_freq=1000,
                 deepcopy_obs=True,

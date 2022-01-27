@@ -12,12 +12,6 @@ class CarlaEnvWithDetection(SimpleCarlaEnv):
         data_dict = {
             "points": np.c_[obs['toplidar'], np.ones(obs['toplidar'].shape[0])]
         }
-        fake_dict_list = []
-        for i in range(16):
-            fake_dict = {}
-            fake_dict['points'] = np.random.random([60000, 4])
-
-
-        det_results = self.detection_model.forward([data_dict]*16)
+        det_results, _ = self.detection_model.forward([data_dict])
         obs.update({"detection_results": det_results})
         return obs

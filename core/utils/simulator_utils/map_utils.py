@@ -351,15 +351,25 @@ class ModuleWorld(object):
         )
         self.waypoint_surface.set_colorkey(COLOR_BLACK)
 
-        scaled_original_size = self.original_surface_size * (1.0 / 0.9)
+        # scaled_original_size = self.original_surface_size * (1.0 / 0.9)
+        #
+        # self.hero_map_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
+        # self.hero_lane_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
+        # self.hero_self_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
+        # self.hero_vehicle_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
+        # self.hero_walker_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
+        # self.hero_traffic_light_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
+        # self.hero_waypoint_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
 
-        self.hero_map_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
-        self.hero_lane_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
-        self.hero_self_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
-        self.hero_vehicle_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
-        self.hero_walker_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
-        self.hero_traffic_light_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
-        self.hero_waypoint_surface = pygame.Surface((scaled_original_size, scaled_original_size)).convert()
+        # akira: i donot know why to crop as a square and need zoom
+        self.hero_map_surface = pygame.Surface((self.window_width, self.window_height)).convert()
+        self.hero_lane_surface = pygame.Surface((self.window_width, self.window_height)).convert()
+        self.hero_self_surface = pygame.Surface((self.window_width, self.window_height)).convert()
+        self.hero_vehicle_surface = pygame.Surface((self.window_width, self.window_height)).convert()
+        self.hero_walker_surface = pygame.Surface((self.window_width, self.window_height)).convert()
+        self.hero_traffic_light_surface = pygame.Surface((self.window_width, self.window_height)).convert()
+        self.hero_waypoint_surface = pygame.Surface((self.window_width, self.window_height)).convert()
+
 
         self.window_map_surface = pygame.Surface((self.window_width, self.window_height)).convert()
         self.window_lane_surface = pygame.Surface((self.window_width, self.window_height)).convert()
@@ -453,6 +463,8 @@ class ModuleWorld(object):
         # print ("Walkers")
 
         for w in list_w:
+            if isinstance(w[0], carla.WalkerAIController):
+                continue
             color = COLOR_WHITE
             # Compute bounding box points
             if from_snapshot:
@@ -579,6 +591,63 @@ class ModuleWorld(object):
         self.walker_surface.set_clip(clipping_rect)
         self.traffic_light_surface.set_clip(clipping_rect)
 
+    @staticmethod
+    def get_target_rect_bounding_rect(width, height, origin, heading_vector, pixel_before_car):
+        assert pixel_before_car < height
+        pixel_behind_car = height - pixel_before_car
+        heading_x = heading_vector[0]
+        heading_y = heading_vector[1]
+        upper_edge_center_x = origin[0] + pixel_before_car * heading_x
+        upper_edge_center_y = origin[1] + pixel_before_car * heading_y
+        lower_edge_center_x = origin[0] - pixel_behind_car * heading_x
+        lower_edge_center_y = origin[1] - pixel_behind_car * heading_y
+        upper_left_x = upper_edge_center_x - width / 2.0 * heading_y
+        upper_left_y = upper_edge_center_y + width / 2.0 * heading_x
+        upper_right_x = upper_edge_center_x + width / 2.0 * heading_y
+        upper_right_y = upper_edge_center_y - width / 2.0 * heading_x
+        lower_left_x = lower_edge_center_x - width / 2.0 * heading_y
+        lower_left_y = lower_edge_center_y + width / 2.0 * heading_x
+        lower_right_x = lower_edge_center_x + width / 2.0 * heading_y
+        lower_right_y = lower_edge_center_y - width / 2.0 * heading_x
+        corners_x = [upper_left_x, upper_right_x, lower_right_x, lower_left_x]
+        corners_y = [upper_left_y, upper_right_y, lower_right_y, lower_left_y]
+        min_x = min(corners_x)
+        max_x = max(corners_x)
+        min_y = min(corners_y)
+        max_y = max(corners_y)
+        return pygame.Rect(min_x, min_y, (max_x - min_x), (max_y - min_y)), corners_x, corners_y
+
+    @staticmethod
+    def get_ego_view(ego_loc_x, ego_loc_y, yaw, window_width, window_height, pixel_ahead_vehicle,
+                     global_suface_dict, window_surface_dict):
+        yaw_rad = np.deg2rad(yaw)
+        hero_front = (np.cos(yaw_rad), np.sin(yaw_rad))
+        target_rect, corners_x, corners_y = ModuleWorld.get_target_rect_bounding_rect(window_width,
+                                                                          window_height,
+                                                                          (ego_loc_x, ego_loc_y),
+                                                                          hero_front,
+                                                                          pixel_ahead_vehicle)
+
+        cropped_global_surfaces = {key: pygame.Surface((target_rect.width, target_rect.height)) for key in
+                                   global_suface_dict.keys()}
+        angle_2_rot = yaw + 90.0
+        for k, v in cropped_global_surfaces.items():
+            v.fill(COLOR_BLACK)
+            v.blit(global_suface_dict[k], (-target_rect.x, -target_rect.y))
+            v = pygame.transform.rotozoom(v, angle_2_rot, 1.0).convert()
+            origin_y = np.abs((corners_y[1] - corners_y[0]) * np.cos(np.deg2rad(angle_2_rot)))
+            origin_x = np.abs((corners_y[3] - corners_y[0]) * np.sin(np.deg2rad(angle_2_rot)))
+            window_surface_dict[k].blit(v, (-origin_x, -origin_y))
+
+
+
+
+
+
+
+
+
+
     def render(self, display, snapshot=None):
         if snapshot is None and self.actors_with_transforms is None:
             return
@@ -636,63 +705,86 @@ class ModuleWorld(object):
                 hero_orientation = snapshot["player"]["transform"]["orientation"]
                 hero_front = carla.Location(x=hero_orientation["x"], y=hero_orientation["y"])
 
-            offset = [0, 0]
-            offset[0] += hero_location_screen[0] - \
-                self.hero_map_surface.get_width() / 2
-            offset[0] += hero_front.x * self.pixel_ahead_vehicle
-            offset[1] += hero_location_screen[1] - \
-                self.hero_map_surface.get_height() / 2
-            offset[1] += hero_front.y * self.pixel_ahead_vehicle
+            global_surfaces = {
+                "self_surface": self.self_surface,
+                "map_surface": self.map_image.map_surface,
+                "lane_surface": self.map_image.lane_surface,
+                "vehicle_surface": self.vehicle_surface,
+                "walker_surface": self.walker_surface,
+                "traffic_light_surface,": self.traffic_light_surface,
+                "waypoint_surface": self.waypoint_surface
+            }
 
-            # Apply clipping rect
-            clipping_rect = pygame.Rect(
-                offset[0], offset[1], self.hero_map_surface.get_width(), self.hero_map_surface.get_height()
-            )
+            window_surfaces = {
+                "self_surface": self.window_self_surface,
+                "map_surface": self.window_map_surface,
+                "lane_surface": self.window_lane_surface,
+                "vehicle_surface": self.window_vehicle_surface,
+                "walker_surface": self.window_walker_surface,
+                "traffic_light_surface,": self.window_traffic_light_surface,
+                "waypoint_surface": self.window_waypoint_surface
+            }
+            self.get_ego_view(hero_location_screen[0], hero_location_screen[1], self.hero_transform.rotation.yaw,
+                              self.window_width, self.window_height, self.pixel_ahead_vehicle,
+                              global_surfaces, window_surfaces)
 
-            self.clip_surfaces(clipping_rect)
-
-            self.hero_self_surface.fill(COLOR_BLACK)
-            self.hero_map_surface.fill(COLOR_BLACK)
-            self.hero_vehicle_surface.fill(COLOR_BLACK)
-            self.hero_walker_surface.fill(COLOR_BLACK)
-            self.hero_traffic_light_surface.fill(COLOR_BLACK)
-            self.hero_waypoint_surface.fill(COLOR_BLACK)
-
-            self.hero_self_surface.blit(self.self_surface, (-offset[0], -offset[1]))
-            self.hero_map_surface.blit(self.map_image.map_surface, (-offset[0], -offset[1]))
-            self.hero_lane_surface.blit(self.map_image.lane_surface, (-offset[0], -offset[1]))
-            self.hero_vehicle_surface.blit(self.vehicle_surface, (-offset[0], -offset[1]))
-            self.hero_walker_surface.blit(self.walker_surface, (-offset[0], -offset[1]))
-            self.hero_traffic_light_surface.blit(self.traffic_light_surface, (-offset[0], -offset[1]))
-            self.hero_waypoint_surface.blit(self.waypoint_surface, (-offset[0], -offset[1]))
-
-            # Rotate: map/vehicle/walker surface
-            rz = pygame.transform.rotozoom
-
-            rotated_map_surface = rz(self.hero_map_surface, angle, 0.9).convert()
-            rotated_lane_surface = rz(self.hero_lane_surface, angle, 0.9).convert()
-            rotated_vehicle_surface = rz(self.hero_vehicle_surface, angle, 0.9).convert()
-            rotated_walker_surface = rz(self.hero_walker_surface, angle, 0.9).convert()
-            rotated_traffic_surface = rz(self.hero_traffic_light_surface, angle, 0.9).convert()
-            rotated_self_surface = rz(self.hero_self_surface, angle, 0.9).convert()
-            rotated_waypoint_surface = rz(self.hero_waypoint_surface, angle, 0.9).convert()
-
-            center = (display.get_width() / 2, display.get_height() / 2)
-            rotation_map_pivot = rotated_map_surface.get_rect(center=center)
-            rotation_lane_pivot = rotated_lane_surface.get_rect(center=center)
-            rotation_vehicle_pivot = rotated_vehicle_surface.get_rect(center=center)
-            rotation_walker_pivot = rotated_walker_surface.get_rect(center=center)
-            rotation_traffic_pivot = rotated_traffic_surface.get_rect(center=center)
-            rotation_self_pivot = rotated_self_surface.get_rect(center=center)
-            rotation_waypoint_pivot = rotated_waypoint_surface.get_rect(center=center)
-
-            self.window_map_surface.blit(rotated_map_surface, rotation_map_pivot)
-            self.window_lane_surface.blit(rotated_lane_surface, rotation_lane_pivot)
-            self.window_vehicle_surface.blit(rotated_vehicle_surface, rotation_vehicle_pivot)
-            self.window_walker_surface.blit(rotated_walker_surface, rotation_walker_pivot)
-            self.window_traffic_light_surface.blit(rotated_traffic_surface, rotation_traffic_pivot)
-            self.window_self_surface.blit(rotated_self_surface, rotation_self_pivot)
-            self.window_waypoint_surface.blit(rotated_waypoint_surface, rotation_waypoint_pivot)
+            # offset = [0, 0]
+            # offset[0] += hero_location_screen[0] - \
+            #     self.hero_map_surface.get_width() / 2
+            # offset[0] += hero_front.x * self.pixel_ahead_vehicle
+            # offset[1] += hero_location_screen[1] - \
+            #     self.hero_map_surface.get_height() / 2
+            # offset[1] += hero_front.y * self.pixel_ahead_vehicle
+            #
+            # # Apply clipping rect
+            # clipping_rect = pygame.Rect(
+            #     offset[0], offset[1], self.hero_map_surface.get_width(), self.hero_map_surface.get_height()
+            # )
+            #
+            # self.clip_surfaces(clipping_rect)
+            #
+            # self.hero_self_surface.fill(COLOR_BLACK)
+            # self.hero_map_surface.fill(COLOR_BLACK)
+            # self.hero_vehicle_surface.fill(COLOR_BLACK)
+            # self.hero_walker_surface.fill(COLOR_BLACK)
+            # self.hero_traffic_light_surface.fill(COLOR_BLACK)
+            # self.hero_waypoint_surface.fill(COLOR_BLACK)
+            #
+            # self.hero_self_surface.blit(self.self_surface, (-offset[0], -offset[1]))
+            # self.hero_map_surface.blit(self.map_image.map_surface, (-offset[0], -offset[1]))
+            # self.hero_lane_surface.blit(self.map_image.lane_surface, (-offset[0], -offset[1]))
+            # self.hero_vehicle_surface.blit(self.vehicle_surface, (-offset[0], -offset[1]))
+            # self.hero_walker_surface.blit(self.walker_surface, (-offset[0], -offset[1]))
+            # self.hero_traffic_light_surface.blit(self.traffic_light_surface, (-offset[0], -offset[1]))
+            # self.hero_waypoint_surface.blit(self.waypoint_surface, (-offset[0], -offset[1]))
+            #
+            # # Rotate: map/vehicle/walker surface
+            # rz = pygame.transform.rotozoom
+            #
+            # rotated_map_surface = rz(self.hero_map_surface, angle, 0.9).convert()
+            # rotated_lane_surface = rz(self.hero_lane_surface, angle, 0.9).convert()
+            # rotated_vehicle_surface = rz(self.hero_vehicle_surface, angle, 0.9).convert()
+            # rotated_walker_surface = rz(self.hero_walker_surface, angle, 0.9).convert()
+            # rotated_traffic_surface = rz(self.hero_traffic_light_surface, angle, 0.9).convert()
+            # rotated_self_surface = rz(self.hero_self_surface, angle, 0.9).convert()
+            # rotated_waypoint_surface = rz(self.hero_waypoint_surface, angle, 0.9).convert()
+            #
+            # center = (display.get_width() / 2, display.get_height() / 2)
+            # rotation_map_pivot = rotated_map_surface.get_rect(center=center)
+            # rotation_lane_pivot = rotated_lane_surface.get_rect(center=center)
+            # rotation_vehicle_pivot = rotated_vehicle_surface.get_rect(center=center)
+            # rotation_walker_pivot = rotated_walker_surface.get_rect(center=center)
+            # rotation_traffic_pivot = rotated_traffic_surface.get_rect(center=center)
+            # rotation_self_pivot = rotated_self_surface.get_rect(center=center)
+            # rotation_waypoint_pivot = rotated_waypoint_surface.get_rect(center=center)
+            #
+            # self.window_map_surface.blit(rotated_map_surface, rotation_map_pivot)
+            # self.window_lane_surface.blit(rotated_lane_surface, rotation_lane_pivot)
+            # self.window_vehicle_surface.blit(rotated_vehicle_surface, rotation_vehicle_pivot)
+            # self.window_walker_surface.blit(rotated_walker_surface, rotation_walker_pivot)
+            # self.window_traffic_light_surface.blit(rotated_traffic_surface, rotation_traffic_pivot)
+            # self.window_self_surface.blit(rotated_self_surface, rotation_self_pivot)
+            # self.window_waypoint_surface.blit(rotated_waypoint_surface, rotation_waypoint_pivot)
 
             def make_image(x):
                 return np.swapaxes(pygame.surfarray.array3d(x), 0, 1).mean(axis=-1)
