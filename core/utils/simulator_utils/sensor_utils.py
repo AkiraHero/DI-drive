@@ -180,9 +180,6 @@ class SensorHelper(object):
         """
         Updates the sensor
         """
-        assert isinstance(data, np.ndarray)
-        print(data.dtype)
-        assert data.dtype in _NTYPE_TO_CTYPE.keys()
         if tag not in self._sensors_dict:
             raise ValueError("The sensor with tag [{}] has not been created!".format(tag))
         self._data_buffers[tag] = data
