@@ -6,6 +6,7 @@ import copy
 import pygame
 import torch
 import carla
+import logging
 
 # ding
 from ding.envs import SyncSubprocessEnvManager, BaseEnvManager
@@ -25,6 +26,7 @@ from core.utils.others.ding_utils import read_ding_config
 from core.envs import SimpleCarlaEnv, BenchmarkEnvWrapper
 from core.utils.others.tcp_helper import parse_carla_tcp
 from core.eval import SerialEvaluator
+from noisy_planning.debug_utils import TestTimer
 
 # other module
 from noisy_planning.detection_model.detection_model_wrapper import DetectionModelWrapper
@@ -169,6 +171,7 @@ def visualize_points(points):
     point_cloud.points = od.utility.Vector3dVector(points[:, 0:3].reshape(-1, 3))
     od.visualization.draw_geometries([point_cloud], width=800, height=600)
 
+
 def detection_process(data_list, detector, env_cfg):
     # 1. extract batch
     batch_points = []
@@ -206,6 +209,7 @@ def detection_process(data_list, detector, env_cfg):
         i['obs']['birdview'][:, :, 2] = vehicle_dim
         i['obs']['birdview'][:, :, 3] = walker_dim
 
+
 def post_processing_data_collection(data_list, detector, env_cfg):
     assert isinstance(detector, DetectionModelWrapper)
     assert isinstance(data_list, list)
@@ -226,6 +230,8 @@ def post_processing_data_collection(data_list, detector, env_cfg):
         detection_process(data_list[pivots[i]: pivots[i + 1]], detector, env_cfg)
 
 
+timer = TestTimer()
+
 
 def main(args, seed=0):
     cfg = get_cfg(args)
@@ -241,7 +247,6 @@ def main(args, seed=0):
     else:
         wrapped_env = wrapped_continuous_env
 
-
     collector_env = SyncSubprocessEnvManager(
         env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.collect, *tcp_list[i]) for i in range(collector_env_num)],
         cfg=cfg.env.manager.collect,
@@ -252,12 +257,15 @@ def main(args, seed=0):
         )
 
     # detector
+    timer.st_point("Init_detector")
     detection_model = None
     if cfg.env.enable_detector:
         print("[MAIN]Detector enabled.")
         detection_model = DetectionModelWrapper(cfg=cfg.env.detector)
     else:
         print("[MAIN]Detector not enabled.")
+    timer.ed_point("Init_detector")
+
     # Uncomment this to add save replay when evaluation
     # evaluate_env.enable_save_replay(cfg.env.replay_path)
 
@@ -271,9 +279,22 @@ def main(args, seed=0):
 
     tb_logger = SummaryWriter('./log/{}/'.format(cfg.exp_name))
     learner = BaseLearner(cfg.policy.learn.learner, policy.learn_mode, tb_logger, exp_name=cfg.exp_name)
-    collector = SampleSerialCollector(cfg.policy.collect.collector, collector_env, policy.collect_mode, tb_logger, exp_name=cfg.exp_name)
-    evaluator = SerialEvaluator(cfg.policy.eval.evaluator, evaluate_env, policy.eval_mode, tb_logger, exp_name=cfg.exp_name)
 
+    timer.st_point("Init_collector")
+    collector = SampleSerialCollector(cfg.policy.collect.collector,
+                                      collector_env,
+                                      policy.collect_mode,
+                                      tb_logger,
+                                      exp_name=cfg.exp_name)
+    timer.ed_point("Init_collector")
+
+    timer.st_point("Init_evaluator")
+    evaluator = SerialEvaluator(cfg.policy.eval.evaluator,
+                                evaluate_env,
+                                policy.eval_mode,
+                                tb_logger,
+                                exp_name=cfg.exp_name)
+    timer.ed_point("Init_evaluator")
     if cfg.policy.get('priority', False):
         replay_buffer = AdvancedReplayBuffer(cfg.policy.other.replay_buffer, tb_logger, exp_name=cfg.exp_name)
     else:
@@ -284,7 +305,7 @@ def main(args, seed=0):
         epsilon_greedy = get_epsilon_greedy_fn(eps_cfg.start, eps_cfg.end, eps_cfg.decay, eps_cfg.type)
 
     learner.call_hook('before_run')
-
+    timer.st_point("Pre_collect")
     if args.policy != 'ppo':
         if args.policy == 'dqn':
             eps = epsilon_greedy(collector.envstep)
@@ -293,22 +314,33 @@ def main(args, seed=0):
         else:
             new_data = collector.collect(n_sample=cfg.policy.collect.pre_sample_num,
                                          train_iter=learner.train_iter)
+        timer.st_point("post_processing")
         post_processing_data_collection(new_data, detection_model, cfg.env)
+        timer.ed_point("post_processing")
+
         replay_buffer.push(new_data, cur_collector_envstep=collector.envstep)
+    timer.ed_point("Pre_collect")
 
     while True:
+        timer.st_point("whole_cycle")
         if evaluator.should_eval(learner.train_iter):
+            timer.st_point("eval")
             stop, rate = evaluator.eval(learner.save_checkpoint, learner.train_iter, collector.envstep)
+            timer.ed_point("eval")
             if stop:
                 break
+        timer.st_point("collect")
         if args.policy == 'dqn':
             eps = epsilon_greedy(collector.envstep)
             new_data = collector.collect(train_iter=learner.train_iter, policy_kwargs={'eps': eps})
         else:
             new_data = collector.collect(train_iter=learner.train_iter)
+        timer.ed_point("collect")
 
         # unpack_birdview(new_data)
+        timer.st_point("post_processing")
         post_processing_data_collection(new_data, detection_model, cfg.env)
+        timer.ed_point("post_processing")
 
         if args.policy == 'ppo':
             learner.train(new_data, collector.envstep)
@@ -320,10 +352,12 @@ def main(args, seed=0):
                 if train_data is not None:
                     train_data = copy.deepcopy(train_data)
                     unpack_birdview(train_data)
+                    timer.st_point("learner.train")
                     learner.train(train_data, collector.envstep)
+                    timer.ed_point("learner.train")
                 if args.policy == 'dqn':
                     replay_buffer.update(learner.priority_info)
-    
+        timer.ed_point("whole_cycle")
     learner.call_hook('after_run')
 
     collector.close()

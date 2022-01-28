@@ -1,6 +1,9 @@
+import logging
+
 import numpy as np
 import cv2
 import struct
+import time
 
 # import open3d as od
 # vis = od.visualization.Visualizer()
@@ -40,5 +43,28 @@ def read_kitti_bin(file_name):
         num = len(buf) // 4
         numbers = struct.unpack("f"*num, buf)
         return numbers
+
+
+class TestTimer:
+    def __init__(self):
+        self.logger = logging.getLogger("TestTimer")
+        if len(self.logger.handlers) == 0:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+        self.logger.setLevel(logging.DEBUG)
+        self.time_dict = {}
+
+    def st_point(self, tag):
+        self.time_dict[tag] = time.time()
+
+    def ed_point(self, tag):
+        if tag not in self.time_dict.keys():
+            return
+        cur = time.time()
+        time_diff = cur - self.time_dict[tag]
+        self.logger.info("[{}] {}s".format(tag, time_diff))
+        self.time_dict.pop(tag)
 
 
