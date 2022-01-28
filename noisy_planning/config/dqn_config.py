@@ -4,7 +4,7 @@ dqn_config = dict(
     exp_name='dqn21_bev32_buf2e5_lr1e4_bs128_ns3000_update4_train_ft',
     env=dict(
         # Collect and eval env num
-        collector_env_num=1,
+        collector_env_num=7,
         evaluator_env_num=1,
         simulator=dict(
             town='Town01',
@@ -43,8 +43,7 @@ dqn_config = dict(
         detector=dict(
             model_repo="openpcdet",
             model_name="pointpillar",
-            repo_config_file="/home/xlju/Project/Model_behavior/DI-drive/noisy_planning/config/openpcdet_config/pointpillar_carla.yaml",
-            ckpt="/home/xlju/Downloads/pointpillar/pointpillar/ckpt/checkpoint_epoch_160.pth",
+            ckpt="/cpfs2/user/juxiaoliang/checkpoint_epoch_160.pth",
             data_config=dict(
                 class_names=['Car', 'Pedestrian'],
                 point_feature_encoder=dict(
@@ -89,7 +88,7 @@ dqn_config = dict(
     ),
     server=[
         # Need to change to you own carla server
-        dict(carla_host='localhost', carla_ports=[9000, 9016, 2]),
+        dict(carla_host='localhost', carla_ports=[9000, 9032, 2]),
     ],
     policy=dict(
         cuda=True,
