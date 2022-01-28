@@ -212,7 +212,6 @@ def detection_process(data_list, detector, env_cfg):
 
 
 def post_processing_data_collection(data_list, detector, env_cfg):
-    assert isinstance(detector, DetectionModelWrapper)
     assert isinstance(data_list, list)
 
     # unpack_birdview
@@ -221,6 +220,7 @@ def post_processing_data_collection(data_list, detector, env_cfg):
     if not env_cfg.enable_detector:
         return
     # detection
+    assert isinstance(detector, DetectionModelWrapper)
     max_batch_size = env_cfg.detector.max_batch_size
     # get mini-batches
     data_list_size = len(data_list)
