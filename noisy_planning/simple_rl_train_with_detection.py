@@ -247,7 +247,7 @@ def main(args, seed=0):
     detection_model = None
     if cfg.env.enable_detector:
         print("[MAIN]Detector enabled.")
-        detection_model = DetectionModelWrapper(cfg=cfg.detector)
+        detection_model = DetectionModelWrapper(cfg=cfg.env.detector)
     else:
         print("[MAIN]Detector not enabled.")
     # Uncomment this to add save replay when evaluation
