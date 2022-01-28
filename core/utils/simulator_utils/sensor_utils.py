@@ -272,22 +272,23 @@ class CallBack(object):
         """
         parses lidar sensors
         """
-        points = np.frombuffer(lidar_data.raw_data, dtype=np.dtype('f4'))
+        ini_points = np.frombuffer(lidar_data.raw_data, dtype=np.dtype('f4'))
         point_num = len(lidar_data)
-        points = np.reshape(points, (point_num, 4))
-        print("before copy")
-        points = copy.deepcopy(points)
-        print("after copy")
-        out_lidar_data = dict(points=points, lidar_pt_num=point_num)
-        if self._config is not None:
-            if isinstance(self._config, dict) and "fixed_pt_num" in self._config.keys():
-                fixed_num = self._config['fixed_pt_num']
-                lidar_pt_num = point_num
-                target_shape = [fixed_num, *(points.shape[1:])]
-                new_pts = np.zeros(target_shape, dtype=points.dtype)
-                ind_limit = min(fixed_num, lidar_pt_num)
-                new_pts[:ind_limit, ...] = points[:ind_limit, ...]
-                out_lidar_data = dict(points=new_pts, lidar_pt_num=lidar_pt_num)
+        points = np.reshape(ini_points, (point_num, 4))
+
+        out_lidar_data = None
+        if isinstance(self._config, dict) and "fixed_pt_num" in self._config.keys():
+            fixed_num = self._config['fixed_pt_num']
+            target_shape = [fixed_num, *(points.shape[1:])]
+            new_pts = np.zeros(target_shape, dtype=points.dtype)
+            ind_limit = min(fixed_num, point_num)
+            new_pts[:ind_limit, ...] = points[:ind_limit, ...]
+            out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
+        else:
+            new_pts = np.zeros(points.shape, dtype=points.dtype)
+            new_pts = new_pts + points
+            out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
+
         self._data_wrapper.update_sensor(tag, out_lidar_data, lidar_data.frame)
 
 
