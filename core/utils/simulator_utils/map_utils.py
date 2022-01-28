@@ -9,6 +9,7 @@ import numpy as np
 import pygame
 from easydict import EasyDict
 import copy
+import faulthandler
 
 import carla
 from carla import TrafficLightState as tls

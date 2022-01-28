@@ -9,6 +9,7 @@ import pygame
 import torch
 import carla
 import logging
+import faulthandler
 
 # ding
 from ding.envs import SyncSubprocessEnvManager, BaseEnvManager
