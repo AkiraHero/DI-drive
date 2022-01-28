@@ -262,6 +262,7 @@ timer = TestTimer()
 
 
 def main(args, seed=0):
+    pygame.init()
     cfg = get_cfg(args)
     tcp_list = parse_carla_tcp(cfg.server)
     collector_env_num, evaluator_env_num = cfg.env.collector_env_num, cfg.env.evaluator_env_num
