@@ -324,11 +324,13 @@ def main(args, seed=0):
     while True:
         timer.st_point("whole_cycle")
         if evaluator.should_eval(learner.train_iter):
+            print('[EVAL]Enter evaluation.')
             timer.st_point("eval")
             stop, rate = evaluator.eval(learner.save_checkpoint, learner.train_iter, collector.envstep)
             timer.ed_point("eval")
             if stop:
                 break
+        print('[MAIN]Enter collection. _default_n_sample={}'.format(collector._default_n_sample))
         timer.st_point("collect")
         if args.policy == 'dqn':
             eps = epsilon_greedy(collector.envstep)
