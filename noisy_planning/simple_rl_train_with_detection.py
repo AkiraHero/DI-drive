@@ -1,33 +1,35 @@
-import sys
-
-sys.path.append("/home/xlju/carla-0.9.11-py3.7-linux-x86_64.egg")
-
-import os
+# system
 import argparse
 import numpy as np
 from functools import partial
-from easydict import EasyDict
 import copy
-from tensorboardX import SummaryWriter
+import pygame
+import torch
+import carla
 
-from core.envs import SimpleCarlaEnv, BenchmarkEnvWrapper
-from core.utils.others.tcp_helper import parse_carla_tcp
-from core.eval import SerialEvaluator
+# ding
 from ding.envs import SyncSubprocessEnvManager, BaseEnvManager
 from ding.policy import DQNPolicy, PPOPolicy, TD3Policy, SACPolicy, DDPGPolicy
 from ding.worker import BaseLearner, SampleSerialCollector, AdvancedReplayBuffer, NaiveReplayBuffer
 from ding.utils import set_pkg_seed
 from ding.rl_utils import get_epsilon_greedy_fn
 
+# rl model
 from demo.simple_rl.model import DQNRLModel, PPORLModel, TD3RLModel, SACRLModel, DDPGRLModel
 from demo.simple_rl.env_wrapper import DiscreteEnvWrapper, ContinuousEnvWrapper
+
+# utils
 from core.utils.data_utils.bev_utils import unpack_birdview
 from core.utils.others.ding_utils import compile_config
 from core.utils.others.ding_utils import read_ding_config
-import pygame
+from core.envs import SimpleCarlaEnv, BenchmarkEnvWrapper
+from core.utils.others.tcp_helper import parse_carla_tcp
+from core.eval import SerialEvaluator
+
+# other module
 from noisy_planning.detection_model.detection_model_wrapper import DetectionModelWrapper
-import torch
-import carla
+from tensorboardX import SummaryWriter
+
 
 def wrapped_discrete_env(env_cfg, wrapper_cfg, host, port, tm_port=None):
     env = SimpleCarlaEnv(env_cfg, host, port, tm_port)
@@ -55,12 +57,12 @@ def get_cfg(args):
     use_policy, _ = get_cls(args.policy)
     use_buffer = AdvancedReplayBuffer if args.policy != 'ppo' else None
     cfg = compile_config(
-        cfg = default_train_config,
-        env_manager = SyncSubprocessEnvManager,
-        policy = use_policy,
-        learner = BaseLearner,
-        collector = SampleSerialCollector,
-        buffer = use_buffer,
+        cfg=default_train_config,
+        env_manager=SyncSubprocessEnvManager,
+        policy=use_policy,
+        learner=BaseLearner,
+        collector=SampleSerialCollector,
+        buffer=use_buffer,
     )
     return cfg
 
@@ -175,6 +177,8 @@ def post_processing_data_collection(data_list, detector, env_cfg):
     # unpack_birdview
     unpack_birdview(data_list)
 
+    if not env_cfg.enable_detector:
+        return
     # detection
 
     # 1. extract batch
@@ -234,17 +238,23 @@ def main(args, seed=0):
         env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.collect, *tcp_list[i]) for i in range(collector_env_num)],
         cfg=cfg.env.manager.collect,
     )
-    # evaluate_env = BaseEnvManager(
-    #     env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.eval, *tcp_list[collector_env_num + i]) for i in range(evaluator_env_num)],
-    #     cfg=cfg.env.manager.eval,
-    #     )
+    evaluate_env = BaseEnvManager(
+        env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.eval, *tcp_list[collector_env_num + i]) for i in range(evaluator_env_num)],
+        cfg=cfg.env.manager.eval,
+        )
 
-    detection_model = DetectionModelWrapper()
+    # detector
+    detection_model = None
+    if cfg.env.enable_detector:
+        print("[MAIN]Detector enabled.")
+        detection_model = DetectionModelWrapper(cfg=cfg.detector)
+    else:
+        print("[MAIN]Detector not enabled.")
     # Uncomment this to add save replay when evaluation
     # evaluate_env.enable_save_replay(cfg.env.replay_path)
 
     collector_env.seed(seed)
-    # evaluate_env.seed(seed)
+    evaluate_env.seed(seed)
     set_pkg_seed(seed)
 
     policy_cls, model_cls = get_cls(args.policy)
@@ -254,7 +264,7 @@ def main(args, seed=0):
     tb_logger = SummaryWriter('./log/{}/'.format(cfg.exp_name))
     learner = BaseLearner(cfg.policy.learn.learner, policy.learn_mode, tb_logger, exp_name=cfg.exp_name)
     collector = SampleSerialCollector(cfg.policy.collect.collector, collector_env, policy.collect_mode, tb_logger, exp_name=cfg.exp_name)
-    # evaluator = SerialEvaluator(cfg.policy.eval.evaluator, evaluate_env, policy.eval_mode, tb_logger, exp_name=cfg.exp_name)
+    evaluator = SerialEvaluator(cfg.policy.eval.evaluator, evaluate_env, policy.eval_mode, tb_logger, exp_name=cfg.exp_name)
 
     if cfg.policy.get('priority', False):
         replay_buffer = AdvancedReplayBuffer(cfg.policy.other.replay_buffer, tb_logger, exp_name=cfg.exp_name)
@@ -270,16 +280,19 @@ def main(args, seed=0):
     if args.policy != 'ppo':
         if args.policy == 'dqn':
             eps = epsilon_greedy(collector.envstep)
-            new_data = collector.collect(n_sample=5, train_iter=learner.train_iter, policy_kwargs={'eps': eps})
+            new_data = collector.collect(n_sample=cfg.env.wrapper.collect.pre_sample_num,
+                                         train_iter=learner.train_iter, policy_kwargs={'eps': eps})
         else:
-            new_data = collector.collect(n_sample=5, train_iter=learner.train_iter)
+            new_data = collector.collect(n_sample=cfg.env.wrapper.collect.pre_sample_num,
+                                         train_iter=learner.train_iter)
+        post_processing_data_collection(new_data, detection_model, cfg.env)
         replay_buffer.push(new_data, cur_collector_envstep=collector.envstep)
 
     while True:
-        # if evaluator.should_eval(learner.train_iter):
-        #     stop, rate = evaluator.eval(learner.save_checkpoint, learner.train_iter, collector.envstep)
-        #     if stop:
-        #         break
+        if evaluator.should_eval(learner.train_iter):
+            stop, rate = evaluator.eval(learner.save_checkpoint, learner.train_iter, collector.envstep)
+            if stop:
+                break
         if args.policy == 'dqn':
             eps = epsilon_greedy(collector.envstep)
             new_data = collector.collect(train_iter=learner.train_iter, policy_kwargs={'eps': eps})
@@ -288,8 +301,6 @@ def main(args, seed=0):
 
         # unpack_birdview(new_data)
         post_processing_data_collection(new_data, detection_model, cfg.env)
-
-
 
         if args.policy == 'ppo':
             learner.train(new_data, collector.envstep)
@@ -308,7 +319,7 @@ def main(args, seed=0):
     learner.call_hook('after_run')
 
     collector.close()
-    # evaluator.close()
+    evaluator.close()
     learner.close()
     if args.policy != 'ppo':
         replay_buffer.close()

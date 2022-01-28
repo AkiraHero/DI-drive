@@ -39,6 +39,24 @@ dqn_config = dict(
                 ),
             )
         ),
+        enable_detector=True,
+        detector=dict(
+            model_repo="openpcdet",
+            model_name="pointpillar",
+            repo_config_file="/home/xlju/Project/Model_behavior/DI-drive/noisy_planning/config/openpcdet_config/pointpillar_carla.yaml",
+            ckpt="/home/xlju/Downloads/pointpillar/pointpillar/ckpt/checkpoint_epoch_160.pth",
+            data_config=dict(
+                class_names=['Car', 'Pedestrian'],
+                point_feature_encoder=dict(
+                    num_point_features=4,
+                ),
+                depth_downsample_factor=None
+            ),
+            score_thres={
+                "vehicle": 0.6,
+                "walker": 0.5
+            }
+        ),
         col_is_failure=True,
         stuck_is_failure=False,
         ignore_light=True,
@@ -94,9 +112,10 @@ dqn_config = dict(
             ),
         ),
         collect=dict(
-            n_sample=10,
+            pre_sample_num=500,
+            n_sample=200,
             collector=dict(
-                collect_print_freq=1000,
+                collect_print_freq=500,
                 deepcopy_obs=True,
                 transform_obs=True,
             ),

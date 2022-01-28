@@ -1,25 +1,15 @@
-import open3d as od
-from multiprocessing import Process
 import numpy as np
 import cv2
 import struct
 
+# import open3d as od
 # vis = od.visualization.Visualizer()
 # vis.create_window()
-
-
-def visualize_points(points):
-    point_cloud = od.geometry.PointCloud()
-    point_cloud.points = od.utility.Vector3dVector(points[:, 0:3].reshape(-1, 3))
-    od.visualization.draw_geometries([point_cloud], width=800, height=600)
-
-# def visualize_points_c(points):
+#
+# def visualize_points(points):
 #     point_cloud = od.geometry.PointCloud()
 #     point_cloud.points = od.utility.Vector3dVector(points[:, 0:3].reshape(-1, 3))
-#     vis.clear_geometries()
-#     vis.add_geometry(point_cloud)
-#     vis.poll_events()
-#     vis.update_renderer()
+#     od.visualization.draw_geometries([point_cloud], width=800, height=600)
 
 
 def plot_pcl(points):

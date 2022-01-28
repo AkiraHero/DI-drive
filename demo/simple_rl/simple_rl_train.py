@@ -1,6 +1,4 @@
 import sys
-sys.path.append("/home/xlju/Project/carla_099/PythonAPI/carla/dist/carla-0.9.9-py3.7-linux-x86_64.egg")
-
 
 import os
 import argparse
