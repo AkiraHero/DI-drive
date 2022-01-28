@@ -157,6 +157,7 @@ class SerialEvaluator(BaseEvaluator):
                 print('[EVAL][episode-{}-line{}]begin'.format(episode_count, 157))
                 for env_id, t in timesteps.items():
                     print('[EVAL][episode-{}-line{}]begin'.format(episode_count, 159))
+                    print(t.info)
                     if t.info.get('abnormal', False):
                         print('[abnormal]')
                         print(t.info)
