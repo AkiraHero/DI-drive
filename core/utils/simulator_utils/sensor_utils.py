@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from core.simulators.carla_data_provider import CarlaDataProvider
 from ding.utils.default_helper import deep_merge_dicts
+from ding.envs.env_manager.subprocess_env_manager import _NTYPE_TO_CTYPE
 
 DEFAULT_CAMERA_CONFIG = {
     'size': [384, 160],
@@ -179,6 +180,8 @@ class SensorHelper(object):
         """
         Updates the sensor
         """
+        assert isinstance(data, np.ndarray)
+        assert data.dtype in _NTYPE_TO_CTYPE.keys()
         if tag not in self._sensors_dict:
             raise ValueError("The sensor with tag [{}] has not been created!".format(tag))
         self._data_buffers[tag] = data
@@ -272,28 +275,25 @@ class CallBack(object):
         """
         parses lidar sensors
         """
-        # ini_points = np.frombuffer(lidar_data.raw_data, dtype=np.dtype('f4'))
-        # point_num = len(lidar_data)
-        # points = np.reshape(ini_points, (point_num, 4))
-        #
-        # out_lidar_data = None
-        # if isinstance(self._config, dict) and "fixed_pt_num" in self._config.keys():
-        #     fixed_num = self._config['fixed_pt_num']
-        #     target_shape = [fixed_num, 4]
-        #     new_pts = np.zeros(target_shape, dtype=points.dtype)
-        #     ind_limit = min(fixed_num, point_num)
-        #     # new_pts[:ind_limit, ...] = points[:ind_limit, ...]
-        #     out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
-        # else:
-        #     new_pts = np.zeros(points.shape, dtype=points.dtype)
-        #     new_pts = new_pts + points
-        #     out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
+        ini_points = np.frombuffer(lidar_data.raw_data, dtype=np.dtype('f4'))
+        point_num = len(lidar_data)
+        points = np.reshape(ini_points, (point_num, 4))
 
-        new_pts = np.zeros([50000, 4], dtype=np.float)
-        new_pts = new_pts
-        out_lidar_data = dict(points=new_pts, lidar_pt_num=50000)
+        out_lidar_data = None
+        if isinstance(self._config, dict) and "fixed_pt_num" in self._config.keys():
+            fixed_num = self._config['fixed_pt_num']
+            target_shape = [fixed_num, 4]
+            new_pts = np.zeros(target_shape, dtype=points.dtype)
+            ind_limit = min(fixed_num, point_num)
+            new_pts[:ind_limit, ...] = points[:ind_limit, ...]
+            out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
+        else:
+            new_pts = copy.deepcopy(points)
+            out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
 
-        self._data_wrapper.update_sensor(tag, out_lidar_data, lidar_data.frame)
+        self._data_wrapper.update_sensor(tag, out_lidar_data['points'], lidar_data.frame)
+        self._data_wrapper.update_sensor(tag + '_points_num', np.array(out_lidar_data['lidar_pt_num']),
+                                         lidar_data.frame)
 
 
     def _parse_gnss_cb(self, gnss_data: Any, tag: str) -> None:
