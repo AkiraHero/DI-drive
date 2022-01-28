@@ -147,13 +147,16 @@ class SerialEvaluator(BaseEvaluator):
 
         with self._timer:
             while episode_count < n_episode:
+                print('[EVAL][episode-{}]begin'.format(episode_count))
                 obs = self._env_manager.ready_obs
                 if self._transform_obs:
                     obs = to_tensor(obs, dtype=torch.float32)
                 policy_output = self._policy.forward(obs, **policy_kwargs)
                 actions = {env_id: output['action'] for env_id, output in policy_output.items()}
                 timesteps = self._env_manager.step(actions)
+                print('[EVAL][episode-{}-line{}]begin'.format(episode_count, 157))
                 for env_id, t in timesteps.items():
+                    print('[EVAL][episode-{}-line{}]begin'.format(episode_count, 159))
                     if t.info.get('abnormal', False):
                         self._policy.reset([env_id])
                         continue
