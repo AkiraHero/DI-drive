@@ -154,6 +154,8 @@ class SerialEvaluator(BaseEvaluator):
                 policy_output = self._policy.forward(obs, **policy_kwargs)
                 actions = {env_id: output['action'] for env_id, output in policy_output.items()}
                 timesteps = self._env_manager.step(actions)
+                for k, v in actions.items():
+                    print("action of env-".format(k), v)
                 print('[EVAL][episode-{}-line{}]begin'.format(episode_count, 157))
                 for env_id, t in timesteps.items():
                     print('[EVAL][episode-{}-line{}]begin'.format(episode_count, 159))
