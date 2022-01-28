@@ -323,6 +323,7 @@ def main(args, seed=0):
 
     while True:
         timer.st_point("whole_cycle")
+        print('[MAIN]learner.train_iter={}'.format(learner.train_iter))
         if evaluator.should_eval(learner.train_iter):
             print('[EVAL]Enter evaluation.')
             timer.st_point("eval")
