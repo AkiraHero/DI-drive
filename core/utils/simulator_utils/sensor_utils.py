@@ -274,14 +274,15 @@ class CallBack(object):
         """
         points = np.frombuffer(lidar_data.raw_data, dtype=np.dtype('f4'))
         point_num = len(lidar_data)
-        print("point_num:", point_num, points.shape[0])
-        points = np.reshape(points, (points.shape[0] // 4, 4))
+        points = np.reshape(points, (point_num, 4))
+        print("before copy")
         points = copy.deepcopy(points)
-        out_lidar_data = dict(points=points, lidar_pt_num=points.shape[0])
+        print("after copy")
+        out_lidar_data = dict(points=points, lidar_pt_num=point_num)
         if self._config is not None:
             if isinstance(self._config, dict) and "fixed_pt_num" in self._config.keys():
                 fixed_num = self._config['fixed_pt_num']
-                lidar_pt_num = points.shape[0]
+                lidar_pt_num = point_num
                 target_shape = [fixed_num, *(points.shape[1:])]
                 new_pts = np.zeros(target_shape, dtype=points.dtype)
                 ind_limit = min(fixed_num, lidar_pt_num)
