@@ -45,6 +45,7 @@ dqn_config = dict(
             model_name="pointpillar",
             repo_config_file="/home/xlju/Project/Model_behavior/DI-drive/noisy_planning/config/openpcdet_config/pointpillar_carla.yaml",
             ckpt="/home/xlju/Downloads/pointpillar/pointpillar/ckpt/checkpoint_epoch_160.pth",
+            max_batch_size=16,
             data_config=dict(
                 class_names=['Car', 'Pedestrian'],
                 point_feature_encoder=dict(
