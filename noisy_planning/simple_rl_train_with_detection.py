@@ -1,3 +1,5 @@
+import sys
+sys.path.append("/home/xlju/carla-0.9.11-py3.7-linux-x86_64.egg")
 # system
 import argparse
 import numpy as np
@@ -188,27 +190,45 @@ def detection_process(data_list, detector, env_cfg):
 
     # 3. distribute and draw obs on bev
     for inx, (i, j1, j2) in enumerate(zip(data_list, detection_res[::2], detection_res[1::2])):
-        i['lidar_points'] = "processed"
-        i['detection'] = {
-            'current': j1,
-            'next': j2
-        }
+        # i['lidar_points'] = "processed"
+        i.pop('lidar_points')
+        # i['detection'] = {
+        #     'current': j1,
+        #     'next': j2
+        # }
         # draw obs
         map_width = env_cfg.simulator.obs[0].size[0]
         map_height = env_cfg.simulator.obs[0].size[1]
         pixel_ahead = env_cfg.simulator.obs[0].pixels_ahead_vehicle
         pixel_per_meter = env_cfg.simulator.obs[0].pixels_per_meter
-        detection_surface = draw_detection_result(detection_res[0],
+
+        detection_surface = draw_detection_result(j1,
                                                   map_width, map_height, pixel_ahead, pixel_per_meter)
         # substitute the 2,3 dim of bev using detection results
         vehicle_dim = detection_surface['det_vehicle_surface']
         walker_dim = detection_surface['det_walker_surface']
         vehicle_dim[vehicle_dim > 0] = 1
         walker_dim[walker_dim > 0] = 1
-        vehicle_dim = torch.Tensor(vehicle_dim, device=i['obs']['birdview'].device).to(i['obs']['birdview'].dtype)
-        walker_dim = torch.Tensor(walker_dim, device=i['obs']['birdview'].device).to(i['obs']['birdview'].dtype)
+        device_here = i['obs']['birdview'].device
+        dtype_here = i['obs']['birdview'].dtype
+        vehicle_dim = torch.Tensor(vehicle_dim, device=device_here).to(dtype_here)
+        walker_dim = torch.Tensor(walker_dim, device=device_here).to(dtype_here)
         i['obs']['birdview'][:, :, 2] = vehicle_dim
         i['obs']['birdview'][:, :, 3] = walker_dim
+
+
+        detection_surface = draw_detection_result(j2,
+                                                  map_width, map_height, pixel_ahead, pixel_per_meter)
+        # substitute the 2,3 dim of bev using detection results
+        vehicle_dim = detection_surface['det_vehicle_surface']
+        walker_dim = detection_surface['det_walker_surface']
+        vehicle_dim[vehicle_dim > 0] = 1
+        walker_dim[walker_dim > 0] = 1
+        vehicle_dim = torch.Tensor(vehicle_dim, device=device_here).to(dtype_here)
+        walker_dim = torch.Tensor(walker_dim, device=device_here).to(dtype_here)
+        i['next_obs']['birdview'][:, :, 2] = vehicle_dim
+        i['next_obs']['birdview'][:, :, 3] = walker_dim
+
 
 
 def post_processing_data_collection(data_list, detector, env_cfg):
