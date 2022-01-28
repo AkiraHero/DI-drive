@@ -272,22 +272,26 @@ class CallBack(object):
         """
         parses lidar sensors
         """
-        ini_points = np.frombuffer(lidar_data.raw_data, dtype=np.dtype('f4'))
-        point_num = len(lidar_data)
-        points = np.reshape(ini_points, (point_num, 4))
+        # ini_points = np.frombuffer(lidar_data.raw_data, dtype=np.dtype('f4'))
+        # point_num = len(lidar_data)
+        # points = np.reshape(ini_points, (point_num, 4))
+        #
+        # out_lidar_data = None
+        # if isinstance(self._config, dict) and "fixed_pt_num" in self._config.keys():
+        #     fixed_num = self._config['fixed_pt_num']
+        #     target_shape = [fixed_num, 4]
+        #     new_pts = np.zeros(target_shape, dtype=points.dtype)
+        #     ind_limit = min(fixed_num, point_num)
+        #     # new_pts[:ind_limit, ...] = points[:ind_limit, ...]
+        #     out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
+        # else:
+        #     new_pts = np.zeros(points.shape, dtype=points.dtype)
+        #     new_pts = new_pts + points
+        #     out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
 
-        out_lidar_data = None
-        if isinstance(self._config, dict) and "fixed_pt_num" in self._config.keys():
-            fixed_num = self._config['fixed_pt_num']
-            target_shape = [fixed_num, 4]
-            new_pts = np.zeros(target_shape, dtype=points.dtype)
-            ind_limit = min(fixed_num, point_num)
-            # new_pts[:ind_limit, ...] = points[:ind_limit, ...]
-            out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
-        else:
-            new_pts = np.zeros(points.shape, dtype=points.dtype)
-            new_pts = new_pts + points
-            out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
+        new_pts = np.zeros([50000, 4], dtype=np.float)
+        new_pts = new_pts
+        out_lidar_data = dict(points=new_pts, lidar_pt_num=50000)
 
         self._data_wrapper.update_sensor(tag, out_lidar_data, lidar_data.frame)
 
