@@ -90,9 +90,10 @@ class OpenpcdetModel(EmbeddedDetectionModelBase):
             cfg_file = os.path.join(parent_folder, self.cfg.repo_config_file)
             assert os.path.isfile(cfg_file)
         self.cfg.repo_config = cfg_from_yaml_file(cfg_file, EasyDict())
-        if not os.path.isfile(self.cfg.repo_config._BASE_CONFIG_):
-            self.cfg.repo_config._BASE_CONFIG_ = os.path.join(parent_folder, self.cfg.repo_config._BASE_CONFIG_)
-            assert os.path.isfile(self.cfg.repo_config._BASE_CONFIG_)
+        if not os.path.isfile(self.cfg.repo_config.DATA_CONFIG._BASE_CONFIG_):
+            self.cfg.repo_config.DATA_CONFIG._BASE_CONFIG_ = \
+                os.path.join(parent_folder, self.cfg.repo_config.DATA_CONFIG._BASE_CONFIG_)
+            assert os.path.isfile(self.cfg.repo_config.DATA_CONFIG._BASE_CONFIG_)
 
     def preprocess_data(self, data):
         data = self.point_feature_encoder.forward(data)
