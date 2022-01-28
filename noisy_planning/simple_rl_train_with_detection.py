@@ -191,6 +191,7 @@ def detection_process(data_list, detector, env_cfg):
     # 3. distribute and draw obs on bev
     for inx, (i, j1, j2) in enumerate(zip(data_list, detection_res[::2], detection_res[1::2])):
         # i['lidar_points'] = "processed"
+        print("i['obs']:", i['obs'].keys())
         i['obs'].pop('lidar_points')
         i['next_obs'].pop('lidar_points')
         # i['detection'] = {
