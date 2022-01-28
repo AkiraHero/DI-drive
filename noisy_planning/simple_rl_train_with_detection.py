@@ -280,10 +280,10 @@ def main(args, seed=0):
     if args.policy != 'ppo':
         if args.policy == 'dqn':
             eps = epsilon_greedy(collector.envstep)
-            new_data = collector.collect(n_sample=cfg.env.wrapper.collect.pre_sample_num,
+            new_data = collector.collect(n_sample=cfg.policy.collect.pre_sample_num,
                                          train_iter=learner.train_iter, policy_kwargs={'eps': eps})
         else:
-            new_data = collector.collect(n_sample=cfg.env.wrapper.collect.pre_sample_num,
+            new_data = collector.collect(n_sample=cfg.policy.collect.pre_sample_num,
                                          train_iter=learner.train_iter)
         post_processing_data_collection(new_data, detection_model, cfg.env)
         replay_buffer.push(new_data, cur_collector_envstep=collector.envstep)
