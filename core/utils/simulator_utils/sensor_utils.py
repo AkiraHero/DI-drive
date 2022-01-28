@@ -279,10 +279,10 @@ class CallBack(object):
         out_lidar_data = None
         if isinstance(self._config, dict) and "fixed_pt_num" in self._config.keys():
             fixed_num = self._config['fixed_pt_num']
-            target_shape = [fixed_num, *(points.shape[1:])]
+            target_shape = [fixed_num, 4]
             new_pts = np.zeros(target_shape, dtype=points.dtype)
             ind_limit = min(fixed_num, point_num)
-            new_pts[:ind_limit, ...] = points[:ind_limit, ...]
+            # new_pts[:ind_limit, ...] = points[:ind_limit, ...]
             out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
         else:
             new_pts = np.zeros(points.shape, dtype=points.dtype)
