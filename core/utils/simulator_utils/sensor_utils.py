@@ -273,32 +273,33 @@ class CallBack(object):
         """
         parses lidar sensors
         """
-        points = np.frombuffer(lidar_data.raw_data, dtype=np.dtype('f4'))
+        # points = np.frombuffer(lidar_data.raw_data, dtype=np.dtype('f4'))
+        # points = copy.deepcopy(points)
+        # points = np.reshape(points, (int(points.shape[0] / 4), 4))
+        # points = points[:10000, ...]
+        # self._data_wrapper.update_sensor(tag, points, lidar_data.frame)
+
+
+        ini_points = np.frombuffer(lidar_data.raw_data, dtype=np.dtype('f4'))
+        point_num = len(lidar_data)
+        points = np.reshape(ini_points, (point_num, 4))
         points = copy.deepcopy(points)
-        points = np.reshape(points, (int(points.shape[0] / 4), 4))
-        points = points[:10000, ...]
-        self._data_wrapper.update_sensor(tag, points, lidar_data.frame)
+        
+        out_lidar_data = None
+        if isinstance(self._config, dict) and "fixed_pt_num" in self._config.keys():
+            fixed_num = self._config['fixed_pt_num']
+            target_shape = [fixed_num, 4]
+            new_pts = np.zeros(target_shape, dtype=points.dtype)
+            ind_limit = min(fixed_num, point_num)
+            new_pts[:ind_limit, ...] = points[:ind_limit, ...]
+            out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
+        else:
+            new_pts = copy.deepcopy(points)
+            out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
 
-
-        # ini_points = np.frombuffer(lidar_data.raw_data, dtype=np.dtype('f4'))
-        # point_num = len(lidar_data)
-        # points = np.reshape(ini_points, (point_num, 4))
-        #
-        # out_lidar_data = None
-        # if isinstance(self._config, dict) and "fixed_pt_num" in self._config.keys():
-        #     fixed_num = self._config['fixed_pt_num']
-        #     target_shape = [fixed_num, 4]
-        #     new_pts = np.zeros(target_shape, dtype=points.dtype)
-        #     ind_limit = min(fixed_num, point_num)
-        #     new_pts[:ind_limit, ...] = points[:ind_limit, ...]
-        #     out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
-        # else:
-        #     new_pts = copy.deepcopy(points)
-        #     out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
-        #
-        # self._data_wrapper.update_sensor(tag, out_lidar_data['points'], lidar_data.frame)
-        # # self._data_wrapper.update_sensor(tag + '_points_num', np.array(out_lidar_data['lidar_pt_num']),
-        # #                                  lidar_data.frame)
+        self._data_wrapper.update_sensor(tag, out_lidar_data['points'], lidar_data.frame)
+        # self._data_wrapper.update_sensor(tag + '_points_num', np.array(out_lidar_data['lidar_pt_num']),
+        #                                  lidar_data.frame)
 
 
     def _parse_gnss_cb(self, gnss_data: Any, tag: str) -> None:
