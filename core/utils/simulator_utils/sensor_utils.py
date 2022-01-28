@@ -292,8 +292,8 @@ class CallBack(object):
             out_lidar_data = dict(points=new_pts, lidar_pt_num=point_num)
 
         self._data_wrapper.update_sensor(tag, out_lidar_data['points'], lidar_data.frame)
-        self._data_wrapper.update_sensor(tag + '_points_num', np.array(out_lidar_data['lidar_pt_num']),
-                                         lidar_data.frame)
+        # self._data_wrapper.update_sensor(tag + '_points_num', np.array(out_lidar_data['lidar_pt_num']),
+        #                                  lidar_data.frame)
 
 
     def _parse_gnss_cb(self, gnss_data: Any, tag: str) -> None:
