@@ -174,8 +174,16 @@ def visualize_points(points):
     point_cloud.points = od.utility.Vector3dVector(points[:, 0:3].reshape(-1, 3))
     od.visualization.draw_geometries([point_cloud], width=800, height=600)
 
+def check_obs_id(data_list):
+    cur_ids = [id(i['obs']) for i in data_list]
+    next_ids = [id(i['next_obs']) for i in data_list]
+    print("cur_ids:", cur_ids)
+    print("next_ids:", next_ids)
+
+
 
 def detection_process(data_list, detector, env_cfg):
+    check_obs_id(data_list)
     # 1. extract batch
     batch_points = []
     for i in data_list:
@@ -191,7 +199,7 @@ def detection_process(data_list, detector, env_cfg):
     # 3. distribute and draw obs on bev
     for inx, (i, j1, j2) in enumerate(zip(data_list, detection_res[::2], detection_res[1::2])):
         # i['lidar_points'] = "processed"
-        print("i['obs']:", i['obs'].keys())
+        # print("i['obs']:", i['obs'].keys())
         i['obs'].pop('lidar_points')
         i['next_obs'].pop('lidar_points')
         # i['detection'] = {
