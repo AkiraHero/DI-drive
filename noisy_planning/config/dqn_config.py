@@ -44,6 +44,7 @@ dqn_config = dict(
             model_repo="openpcdet",
             model_name="pointpillar",
             ckpt="/cpfs2/user/juxiaoliang/checkpoint_epoch_160.pth",
+            max_batch_size=16,
             data_config=dict(
                 class_names=['Car', 'Pedestrian'],
                 point_feature_encoder=dict(

@@ -169,18 +169,7 @@ def visualize_points(points):
     point_cloud.points = od.utility.Vector3dVector(points[:, 0:3].reshape(-1, 3))
     od.visualization.draw_geometries([point_cloud], width=800, height=600)
 
-
-def post_processing_data_collection(data_list, detector, env_cfg):
-    assert isinstance(detector, DetectionModelWrapper)
-    assert isinstance(data_list, list)
-
-    # unpack_birdview
-    unpack_birdview(data_list)
-
-    if not env_cfg.enable_detector:
-        return
-    # detection
-
+def detection_process(data_list, detector, env_cfg):
     # 1. extract batch
     batch_points = []
     for i in data_list:
@@ -189,7 +178,6 @@ def post_processing_data_collection(data_list, detector, env_cfg):
         batch_points.append({'points': validate_point_size(p_frm_cur)})
         batch_points.append({'points': validate_point_size(p_frm_nxt)})
         # visualize_points(p_frm_cur)
-        pass
 
     # 2. inference
     detection_res = detector.forward(batch_points)
@@ -217,6 +205,26 @@ def post_processing_data_collection(data_list, detector, env_cfg):
         walker_dim = torch.Tensor(walker_dim, device=i['obs']['birdview'].device).to(i['obs']['birdview'].dtype)
         i['obs']['birdview'][:, :, 2] = vehicle_dim
         i['obs']['birdview'][:, :, 3] = walker_dim
+
+def post_processing_data_collection(data_list, detector, env_cfg):
+    assert isinstance(detector, DetectionModelWrapper)
+    assert isinstance(data_list, list)
+
+    # unpack_birdview
+    unpack_birdview(data_list)
+
+    if not env_cfg.enable_detector:
+        return
+    # detection
+    max_batch_size = env_cfg.detector.max_batch_size
+    # get mini-batches
+    data_list_size = len(data_list)
+    pivots = [i for i in range(0, data_list_size, max_batch_size)] + [data_list_size]
+    seg_num = len(pivots) - 1
+    for i in range(seg_num):
+        print('[DET]processing minibatch-{}...'.format(i))
+        detection_process(data_list[pivots[i]: pivots[i + 1]], detector, env_cfg)
+
 
 
 def main(args, seed=0):
