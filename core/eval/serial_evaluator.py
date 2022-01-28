@@ -158,6 +158,8 @@ class SerialEvaluator(BaseEvaluator):
                 for env_id, t in timesteps.items():
                     print('[EVAL][episode-{}-line{}]begin'.format(episode_count, 159))
                     if t.info.get('abnormal', False):
+                        print('[abnormal]')
+                        print(t.info)
                         self._policy.reset([env_id])
                         continue
                     if t.done:
