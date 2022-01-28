@@ -112,7 +112,7 @@ dqn_config = dict(
             ),
         ),
         collect=dict(
-            pre_sample_num=500,
+            pre_sample_num=14,
             n_sample=200,
             collector=dict(
                 collect_print_freq=500,
