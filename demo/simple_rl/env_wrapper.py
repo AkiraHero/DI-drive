@@ -36,9 +36,10 @@ def get_obs_out(obs):
     obs_out = {
         'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
         'speed': (obs['speed'] / 25).astype(np.float32),
-        'lidar_points': obs['toplidar'],
         'bev_elements': obs['birdview_initial_dict']
     }
+    if 'toplidar' in obs.keys():
+        obs_out['lidar_points'] = obs['toplidar']
     return obs_out
 
 
@@ -121,11 +122,7 @@ class ContinuousEnvWrapper(gym.Wrapper):
 
     def reset(self, *args, **kwargs) -> Any:
         obs = super().reset(*args, **kwargs)
-        obs_out = {
-            'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
-            'speed': (obs['speed'] / 25).astype(np.float32),
-            'lidar_points': obs['toplidar'],
-        }
+        obs_out = get_obs_out(obs)
         return obs_out
 
     def step(self, action):
