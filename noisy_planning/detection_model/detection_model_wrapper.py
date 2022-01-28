@@ -63,12 +63,12 @@ class OpenpcdetModel(EmbeddedDetectionModelBase):
         self.point_feature_encoder = PointFeatureEncoder(self.cfg.repo_config.DATA_CONFIG.POINT_FEATURE_ENCODING,
                                                          point_cloud_range=point_cloud_range)
         data_info = cfg.data_config
+        voxel_size = self.cfg.repo_config.DATA_CONFIG.DATA_PROCESSOR[2].VOXEL_SIZE
         data_info.update(
             dict(
-                voxel_size=self.cfg.repo_config.DATA_CONFIG.DATA_PROCESSOR[2].VOXEL_SIZE,
+                voxel_size=voxel_size,
                 point_cloud_range=point_cloud_range,
-                grid_size=np.round((point_cloud_range[3:6] - point_cloud_range[0:3]) / data_info.voxel_size).astype(
-                    np.int64)
+                grid_size=np.round((point_cloud_range[3:6] - point_cloud_range[0:3]) / voxel_size).astype(np.int64)
             )
         )
 
