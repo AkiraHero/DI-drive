@@ -183,25 +183,21 @@ def check_obs_id(data_list):
 
 
 def detection_process(data_list, detector, env_cfg):
-    check_obs_id(data_list)
     # 1. extract batch
     batch_points = []
     for i in data_list:
-        p_frm_cur = i['obs']['lidar_points']
-        p_frm_nxt = i['next_obs']['lidar_points']
-        batch_points.append({'points': validate_point_size(p_frm_cur)})
-        batch_points.append({'points': validate_point_size(p_frm_nxt)})
+        p_frm = i['lidar_points']
+        batch_points.append({'points': validate_point_size(p_frm)})
         # visualize_points(p_frm_cur)
 
     # 2. inference
     detection_res = detector.forward(batch_points)
 
     # 3. distribute and draw obs on bev
-    for inx, (i, j1, j2) in enumerate(zip(data_list, detection_res[::2], detection_res[1::2])):
+    for inx, (i, j) in enumerate(zip(data_list, detection_res)):
         # i['lidar_points'] = "processed"
         # print("i['obs']:", i['obs'].keys())
-        i['obs'].pop('lidar_points')
-        i['next_obs'].pop('lidar_points')
+        i.pop('lidar_points')
         # i['detection'] = {
         #     'current': j1,
         #     'next': j2
@@ -212,32 +208,21 @@ def detection_process(data_list, detector, env_cfg):
         pixel_ahead = env_cfg.simulator.obs[0].pixels_ahead_vehicle
         pixel_per_meter = env_cfg.simulator.obs[0].pixels_per_meter
 
-        detection_surface = draw_detection_result(j1,
+        detection_surface = draw_detection_result(j,
                                                   map_width, map_height, pixel_ahead, pixel_per_meter)
         # substitute the 2,3 dim of bev using detection results
         vehicle_dim = detection_surface['det_vehicle_surface']
         walker_dim = detection_surface['det_walker_surface']
         vehicle_dim[vehicle_dim > 0] = 1
         walker_dim[walker_dim > 0] = 1
-        device_here = i['obs']['birdview'].device
-        dtype_here = i['obs']['birdview'].dtype
+        device_here = i['birdview'].device
+        dtype_here = i['birdview'].dtype
         vehicle_dim = torch.Tensor(vehicle_dim, device=device_here).to(dtype_here)
         walker_dim = torch.Tensor(walker_dim, device=device_here).to(dtype_here)
-        i['obs']['birdview'][:, :, 2] = vehicle_dim
-        i['obs']['birdview'][:, :, 3] = walker_dim
+        i['birdview'][:, :, 2] = vehicle_dim
+        i['birdview'][:, :, 3] = walker_dim
+        i['birdview_using_detection'] = True
 
-
-        detection_surface = draw_detection_result(j2,
-                                                  map_width, map_height, pixel_ahead, pixel_per_meter)
-        # substitute the 2,3 dim of bev using detection results
-        vehicle_dim = detection_surface['det_vehicle_surface']
-        walker_dim = detection_surface['det_walker_surface']
-        vehicle_dim[vehicle_dim > 0] = 1
-        walker_dim[walker_dim > 0] = 1
-        vehicle_dim = torch.Tensor(vehicle_dim, device=device_here).to(dtype_here)
-        walker_dim = torch.Tensor(walker_dim, device=device_here).to(dtype_here)
-        i['next_obs']['birdview'][:, :, 2] = vehicle_dim
-        i['next_obs']['birdview'][:, :, 3] = walker_dim
 
 
 
@@ -252,13 +237,25 @@ def post_processing_data_collection(data_list, detector, env_cfg):
     # detection
     assert isinstance(detector, DetectionModelWrapper)
     max_batch_size = env_cfg.detector.max_batch_size
+
+    # get unique datalist
+    data_list_dict = {id(i['obs']): i['obs'] for i in data_list}
+    data_list_dict.update({id(i['next_obs']): i['next_obs'] for i in data_list})
+    obs_list = [i for i in data_list_dict.values()]
+
+
     # get mini-batches
-    data_list_size = len(data_list)
-    pivots = [i for i in range(0, data_list_size, max_batch_size)] + [data_list_size]
+    obs_list_size = len(obs_list)
+    pivots = [i for i in range(0, obs_list_size, max_batch_size)] + [obs_list_size]
     seg_num = len(pivots) - 1
     for i in range(seg_num):
         print('[DET]processing minibatch-{}...'.format(i))
-        detection_process(data_list[pivots[i]: pivots[i + 1]], detector, env_cfg)
+        detection_process(obs_list[pivots[i]: pivots[i + 1]], detector, env_cfg)
+
+    # debug: check detection process
+    for i in data_list:
+        assert i['obs']['birdview_using_detection'] is True
+        assert i['next_obs']['birdview_using_detection'] is True
 
 
 timer = TestTimer()
