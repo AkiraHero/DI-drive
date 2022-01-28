@@ -49,6 +49,7 @@ def get_cfg(args):
     else:
         ding_cfg = {
             'dqn': 'noisy_planning.config.dqn_config.py',
+            'dqn-ini': 'noisy_planning.config.dqn_config_ini.py',
             # 'ppo': 'noisy_planning.config.ppo_config.py',
             # 'td3': 'noisy_planning.config.td3_config.py',
             # 'sac': 'noisy_planning.config.sac_config.py',
