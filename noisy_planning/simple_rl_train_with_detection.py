@@ -85,11 +85,12 @@ def get_cls(spec):
 
 
 def validate_point_size(point_frm):
-    point = point_frm['points']
-    original_points_num = point_frm['lidar_pt_num']
-    if point.shape[0] < original_points_num:
-        print("[Warning] use less lidar point caused by fixed_pt_num: "
-              "{}/{}.".format(point.shape[0], original_points_num))
+    point = point_frm
+    # point = point_frm['points']
+    # original_points_num = point_frm['lidar_pt_num']
+    # if point.shape[0] < original_points_num:
+    #     print("[Warning] use less lidar point caused by fixed_pt_num: "
+    #           "{}/{}.".format(point.shape[0], original_points_num))
     if point.shape[-1] == 3:
         # add a dim:
         print("[Warning] use point cloud without intensity... add intensity value: 1.0")
