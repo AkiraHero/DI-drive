@@ -151,7 +151,6 @@ class SerialEvaluator(BaseEvaluator):
         env_steps = {}
         with self._timer:
             while episode_count < n_episode:
-                print('[EVAL][episode-{}]begin'.format(episode_count))
                 obs = self._env_manager.ready_obs
                 if self._transform_obs:
                     obs = to_tensor(obs, dtype=torch.float32)
@@ -161,6 +160,13 @@ class SerialEvaluator(BaseEvaluator):
                 for env_id, t in timesteps.items():
                     if env_id not in env_steps.keys():
                         env_steps[env_id] = 0
+                    if t.info['stuck']:
+                        self._policy.reset([env_id])
+                        env_steps[env_id] = 0
+                        episode_count += 1
+                        self._logger.info(
+                            "[EVALUATOR] env {} stop episode for it is stucked".format(env_id))
+                        continue
                     if env_steps[env_id] > self._env_max_steps:
                         episode_count += 1
                         result = {
@@ -174,6 +180,7 @@ class SerialEvaluator(BaseEvaluator):
                             ))
                         self._policy.reset([env_id])
                         env_steps[env_id] = 0
+                        continue
                     if t.info.get('abnormal', False):
                         self._policy.reset([env_id])
                         env_steps[env_id] = 0
