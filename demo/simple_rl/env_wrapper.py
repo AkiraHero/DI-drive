@@ -36,7 +36,7 @@ def get_obs_out(obs):
     obs_out = {
         'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
         'speed': (obs['speed'] / 25).astype(np.float32),
-        'bev_elements': obs['birdview_initial_dict']
+#        'bev_elements': obs['birdview_initial_dict']
     }
     if 'toplidar' in obs.keys():
         obs_out['lidar_points'] = obs['toplidar']

@@ -103,8 +103,8 @@ class CarlaSimulator(BaseSimulator):
         delta_seconds=0.1,
         no_rendering=False,
         auto_pilot=False,
-        n_vehicles=200,
-        n_pedestrians=200,
+        n_vehicles=0,
+        n_pedestrians=0,
         disable_two_wheels=False,
         col_threshold=400,
         waypoint_num=20,
@@ -578,7 +578,7 @@ class CarlaSimulator(BaseSimulator):
             elif obs_item.type == 'bev':
                 key = obs_item.name
                 sensor_data.update({key: get_birdview(self._bev_wrapper.get_bev_data())})
-                sensor_data.update({key + "_initial_dict": self._bev_wrapper.get_bev_data()})
+                #sensor_data.update({key + "_initial_dict": self._bev_wrapper.get_bev_data()})
         return sensor_data
 
     def get_information(self) -> Dict:
