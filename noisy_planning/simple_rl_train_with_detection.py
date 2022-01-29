@@ -265,6 +265,7 @@ timer = TestTimer()
 
 def main(args, seed=0):
     pygame.init()
+    enable_eval = False
     cfg = get_cfg(args)
     tcp_list = parse_carla_tcp(cfg.server)
     collector_env_num, evaluator_env_num = cfg.env.collector_env_num, cfg.env.evaluator_env_num
@@ -282,10 +283,11 @@ def main(args, seed=0):
         env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.collect, *tcp_list[i]) for i in range(collector_env_num)],
         cfg=cfg.env.manager.collect,
     )
-    evaluate_env = BaseEnvManager(
-        env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.eval, *tcp_list[collector_env_num + i]) for i in range(evaluator_env_num)],
-        cfg=cfg.env.manager.eval,
-        )
+    if enable_eval:
+        evaluate_env = BaseEnvManager(
+            env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.eval, *tcp_list[collector_env_num + i]) for i in range(evaluator_env_num)],
+            cfg=cfg.env.manager.eval,
+            )
 
     # detector
     timer.st_point("Init_detector")
@@ -301,7 +303,8 @@ def main(args, seed=0):
     # evaluate_env.enable_save_replay(cfg.env.replay_path)
 
     collector_env.seed(seed)
-    evaluate_env.seed(seed)
+    if enable_eval:
+        evaluate_env.seed(seed)
     set_pkg_seed(seed)
 
     policy_cls, model_cls = get_cls(args.policy)
@@ -320,11 +323,12 @@ def main(args, seed=0):
     timer.ed_point("Init_collector")
 
     timer.st_point("Init_evaluator")
-    evaluator = SerialEvaluator(cfg.policy.eval.evaluator,
-                                evaluate_env,
-                                policy.eval_mode,
-                                tb_logger,
-                                exp_name=cfg.exp_name)
+    if enable_eval:
+        evaluator = SerialEvaluator(cfg.policy.eval.evaluator,
+                                    evaluate_env,
+                                    policy.eval_mode,
+                                    tb_logger,
+                                    exp_name=cfg.exp_name)
     timer.ed_point("Init_evaluator")
     if cfg.policy.get('priority', False):
         replay_buffer = AdvancedReplayBuffer(cfg.policy.other.replay_buffer, tb_logger, exp_name=cfg.exp_name)
@@ -355,7 +359,7 @@ def main(args, seed=0):
     while True:
         timer.st_point("whole_cycle")
         print('[MAIN]learner.train_iter={}'.format(learner.train_iter))
-        if evaluator.should_eval(learner.train_iter):
+        if enable_eval and evaluator.should_eval(learner.train_iter):
             print('[EVAL]Enter evaluation.')
             timer.st_point("eval")
             stop, rate = evaluator.eval(learner.save_checkpoint, learner.train_iter, collector.envstep)
@@ -395,7 +399,8 @@ def main(args, seed=0):
     learner.call_hook('after_run')
 
     collector.close()
-    evaluator.close()
+    if enable_eval:
+        evaluator.close()
     learner.close()
     if args.policy != 'ppo':
         replay_buffer.close()
