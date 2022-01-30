@@ -83,6 +83,17 @@ class SimpleCarlaEnv(BaseDriveEnv):
         """
         Initialize environment with config and Carla TCP host & port.
         """
+        import logging
+        self.logger = logging.getLogger("[Simulator-{}]".format(port))
+        while self.logger.handlers:
+            self.logger.handlers.pop()
+        if len(self.logger.handlers) == 0:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(thread)0x- %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+        self.logger.propagate = False
+        self.logger.setLevel(logging.DEBUG)
         super().__init__(cfg, **kwargs)
 
         self._simulator_cfg = self._cfg.simulator
@@ -255,7 +266,9 @@ class SimpleCarlaEnv(BaseDriveEnv):
 
         done = self.is_success() or self.is_failure()
         if done:
+            self.logger.error("I double this bug is because 1.1.................................................................")
             self._simulator.clean_up()
+            self.logger.error("I double this bug is because 1.2.................................................................")
             if self._visualizer is not None:
                 self._visualizer.done()
                 self._visualizer = None
@@ -267,7 +280,9 @@ class SimpleCarlaEnv(BaseDriveEnv):
         Delete simulator & visualizer instances and close the environment.
         """
         if self._launched_simulator:
+            self.logger.error("I double this bug is because 2.1.................................................................")
             self._simulator.clean_up()
+            self.logger.error("I double this bug is because 2.2.................................................................")
             self._simulator._set_sync_mode(False)
             del self._simulator
             self._launched_simulator = False

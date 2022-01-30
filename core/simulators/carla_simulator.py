@@ -21,6 +21,8 @@ from core.utils.others.tcp_helper import find_traffic_manager_port
 import carla
 from carla import WeatherParameters
 
+import logging
+
 PRESET_WEATHERS = {
     1: WeatherParameters.ClearNoon,
     2: WeatherParameters.CloudyNoon,
@@ -103,8 +105,8 @@ class CarlaSimulator(BaseSimulator):
         delta_seconds=0.1,
         no_rendering=False,
         auto_pilot=False,
-        n_vehicles=0,
-        n_pedestrians=0,
+        n_vehicles=200,
+        n_pedestrians=200,
         disable_two_wheels=False,
         col_threshold=400,
         waypoint_num=20,
@@ -112,7 +114,7 @@ class CarlaSimulator(BaseSimulator):
         planner=dict(),
         aug=None,
         verbose=True,
-        debug=False,
+        debug=True,
     )
 
     def __init__(
@@ -125,6 +127,16 @@ class CarlaSimulator(BaseSimulator):
             timeout: float = 60.0,
             **kwargs
     ) -> None:
+        self.logger = logging.getLogger("[Simulator-{}]".format(port))
+        while self.logger.handlers:
+            self.logger.handlers.pop()
+        if len(self.logger.handlers) == 0:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(thread)0x- %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+        self.logger.propagate = False
+        self.logger.setLevel(logging.DEBUG)
         """
         Init Carla simulator.
         """
@@ -166,7 +178,6 @@ class CarlaSimulator(BaseSimulator):
         self._sync_mode = self._cfg.sync_mode
         self._no_rendering = self._cfg.no_rendering
         self._delta_seconds = self._cfg.delta_seconds
-
         self._apply_world_setting(**self._cfg)
         self._col_threshold = self._cfg.col_threshold
         self._waypoint_num = self._cfg.waypoint_num
@@ -195,6 +206,8 @@ class CarlaSimulator(BaseSimulator):
 
         self._actor_map = defaultdict(list)
         self._debug = self._cfg.debug
+
+
 
     def _apply_world_setting(self, **world_param) -> None:
         for k in world_param:
@@ -234,15 +247,18 @@ class CarlaSimulator(BaseSimulator):
         self._blueprints = self._world.get_blueprint_library()
 
         while True:
+            print("I double this bug is because 3.1.................................................................")
             self.clean_up()
 
             CarlaDataProvider.set_client(self._client)
             CarlaDataProvider.set_world(self._world)
             CarlaDataProvider.set_traffic_manager_port(self._tm.get_port())
+            print("I double this bug is because 3.2.................................................................")
 
             self._spawn_hero_vehicle(start_pos=start)
             self._prepare_observations()
-
+            
+            self.logger.error("[ACTOR SPAWN] prepare to spawn {} vechiles and {} walkers".format(self._n_vehicles, self._n_pedestrians))
             self._spawn_vehicles()
             self._spawn_pedestrians()
 
@@ -256,7 +272,10 @@ class CarlaSimulator(BaseSimulator):
 
             if self._ready():
                 if self._debug:
+                    self.logger.error(">>>>>>>>>>>>>>>>>>>>>>>>ready>>>>>>>>>>>>>>>>>>>>>>>>>>>")
                     self._count_actors()
+                    self.logger.error("<<<<<<<<<<<<<<<<<<<<<<<<ready<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+
                 break
 
     def _set_town(self, town: str) -> None:
@@ -326,7 +345,7 @@ class CarlaSimulator(BaseSimulator):
         for response in self._client.apply_batch_sync(batch, True):
             if response.error:
                 if self._verbose:
-                    print('[SIMULATOR]', response.error)
+                    self.logger.error('[SIMULATOR]' + response.error)
             else:
                 CarlaDataProvider.register_actor(self._world.get_actor(response.actor_id))
 
@@ -462,6 +481,7 @@ class CarlaSimulator(BaseSimulator):
         walkers = []
         sensors = []
         others = []
+        controller = []
 
         actors = self._world.get_actors()
         actors_with_transforms = [(actor, actor.get_transform()) for actor in actors]
@@ -476,21 +496,27 @@ class CarlaSimulator(BaseSimulator):
                 speed_limits.append(actor_with_transform)
             elif 'walker.pedestrian' in actor.type_id:
                 walkers.append(actor_with_transform)
+            elif 'controller.ai.walker' in actor.type_id:
+                controller.append(actor_with_transform)
             elif 'sensor' in actor.type_id:
                 sensors.append(actor_with_transform)
             else:
                 others.append(actor_with_transform)
 
-        print("[SIMULATOR] vehicles:")
-        for veh in vehicles:
-            print('\t', veh[0].id, veh[0].type_id, veh[0].attributes['role_name'])
-        print("[SIMULATOR] walkers:", len(walkers))
-        #print("[SIMULATOR] lights:", len(traffic_lights))
-        #print("[SIMULATOR] speed limits:", len(speed_limits))
-        print("[SIMULATOR] sensors:")
+        beginning = "\n>>>>>>>>>>>>>>>>>>>>>>>\n"
+        vehicle_info = "Vehicles:{}\n".format(len(vehicles))
+        sensor_info = "Sensors:{}\n".format(len(sensors))
         for ss in sensors:
-            print('\t', ss[0])
-        print("[SIMULATOR] others:", len(others))
+            sensor_info + '\t' + str(ss[0]) + "\n"
+        controller_info = "Controllers:{}\n".format(len(controller))
+        walker_info = "Walkers:{}\n".format(len(walkers))
+        others_info = "Others:{}\n".format(len(others))
+        ending = "<<<<<<<<<<<<<<<<<<<<<<<<"
+        out_string = beginning + vehicle_info + sensor_info + controller_info + walker_info + others_info + ending
+        self.logger.error(out_string)
+        # for veh in vehicles:
+            # print('\t', veh[0].id, veh[0].type_id, veh[0].attributes['role_name'])
+
 
     def apply_planner(self, end_idx: int) -> Dict:
         """
@@ -693,11 +719,57 @@ class CarlaSimulator(BaseSimulator):
             control_signal = control_to_signal(control)
             self._hero_actor.apply_control(control_signal)
 
+
+    def clean_all_manual_actors(self):
+        self.logger.error("Try to clean all....")
+        detroy_command = carla.command.DestroyActor
+        not_success = True
+        try_destroy_cnt = 0
+        while not_success:
+            self.logger.error("Try to clean all...-1.")
+            actor_list = [ a for a in self._world.get_actors() ]
+            self.logger.error("Try to clean all....-2")
+            vehicles = []
+            walkers = []
+            controllers = []
+            sensors = []
+            for actor in actor_list:
+                if 'vehicle' in actor.type_id:
+                    vehicles.append(actor_with_transform)
+                elif 'walker.pedestrian' in actor.type_id:
+                    walkers.append(actor_with_transform)
+                elif 'controller.ai.walker' in actor.type_id:
+                    controllers.append(actor_with_transform)
+                elif 'sensor' in actor.type_id:
+                    sensors.append(actor_with_transform)
+            self.logger.error("[CLEAN-ALL]Need clean: {} sensors,{} vehicles, {} controllers, {} walkers."
+                .format(len(sensors), len(vehicles), len(controllers), len(walkers)))
+            destroy_list = []
+            ordered_actors = controllers + walkers + sensors + vehicles
+            for i in ordered_actors:
+                destroy_list.append(detroy_command(i.actor_id))
+            for response in self._client.apply_batch_sync(destroy_list, True):
+                if response.error:
+                    if self._verbose:
+                        self.logger.error('[SIMULATOR]' + response.error)
+                    not_success = True
+            not_success = False
+            try_destroy_cnt += 1
+            if not_success:
+                self.logger.error("Destroy failed after {} try".format(try_destroy_cnt))
+        
+
+
     def clean_up(self) -> None:
         """
         Destroy all actors and sensors in current world. Clear all messages saved in simulator and data provider.
         This will NOT destroy the Carla client, so simulator can use same carla client to start next episode.
         """
+        if self._sensor_helper is not None:
+            self._sensor_helper.clean_up()
+        if self._collision_sensor is not None:
+            self._collision_sensor.clear()
+
         for actor in self._actor_map['walker_controller']:
             if actor.is_alive:
                 actor.stop()
@@ -705,12 +777,8 @@ class CarlaSimulator(BaseSimulator):
         self._actor_map['walker_controller'].clear()
         self._actor_map.clear()
 
-        if self._sensor_helper is not None:
-            self._sensor_helper.clean_up()
         if self._bev_wrapper is not None:
             self._bev_wrapper.clear()
-        if self._collision_sensor is not None:
-            self._collision_sensor.clear()
         if self._planner is not None:
             self._planner.clean_up()
 
@@ -725,8 +793,12 @@ class CarlaSimulator(BaseSimulator):
 
         CarlaDataProvider.clean_up()
         if self._debug:
-            print('after')
+            # print('after')
+            self.logger.error("After CarlaDataProvider.clean_up()")
             self._count_actors()
+            
+        # clear all object
+        self.clean_all_manual_actors()
 
     @property
     def town_name(self) -> str:

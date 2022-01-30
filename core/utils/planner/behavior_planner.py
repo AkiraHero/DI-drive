@@ -35,6 +35,17 @@ class BehaviorPlanner(BasicPlanner):
     )
 
     def __init__(self, cfg: Dict) -> None:
+        import logging
+        self.logger = logging.getLogger("[BehaviorPlanner]")
+        while self.logger.handlers:
+            self.logger.handlers.pop()
+        if len(self.logger.handlers) == 0:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(thread)0x- %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+        self.logger.propagate = False
+        self.logger.setLevel(logging.DEBUG)
         super().__init__(cfg)
 
         self._speed = 0
@@ -149,6 +160,13 @@ class BehaviorPlanner(BasicPlanner):
         assert self._route is not None
 
         vehicle_transform = CarlaDataProvider.get_transform(self._hero_vehicle)
+        if vehicle_transform is None:
+            hh = CarlaDataProvider.get_hero_actor()
+            if hh is None:
+                self.logger.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!hh is Noen!")
+            if self._hero_vehicle is None:
+                self.logger.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1!se is None!")
+            print("hero id={}, our id={}".format(hh.actor_id, self._hero_vehicle.actor_id))
         self._vehicle_location = vehicle_transform.location
         self.current_waypoint = self._map.get_waypoint(
             self._vehicle_location, lane_type=carla.LaneType.Driving, project_to_road=True
