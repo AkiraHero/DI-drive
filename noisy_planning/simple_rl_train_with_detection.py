@@ -380,22 +380,22 @@ def main(args, seed=0):
         post_processing_data_collection(new_data, detection_model, cfg.env)
         timer.ed_point("post_processing")
 
-        if args.policy == 'ppo':
-            learner.train(new_data, collector.envstep)
-        else:
-            update_per_collect = len(new_data) // cfg.policy.learn.batch_size * 4
-            replay_buffer.push(new_data, cur_collector_envstep=collector.envstep)
-            for i in range(update_per_collect):
-                train_data = replay_buffer.sample(cfg.policy.learn.batch_size, learner.train_iter)
-                if train_data is not None:
-                    train_data = copy.deepcopy(train_data)
-                    unpack_birdview(train_data)
-                    timer.st_point("learner.train")
-                    learner.train(train_data, collector.envstep)
-                    timer.ed_point("learner.train")
-                if args.policy == 'dqn':
-                    replay_buffer.update(learner.priority_info)
-        timer.ed_point("whole_cycle")
+        # if args.policy == 'ppo':
+        #     learner.train(new_data, collector.envstep)
+        # else:
+        #     update_per_collect = len(new_data) // cfg.policy.learn.batch_size * 4
+        #     replay_buffer.push(new_data, cur_collector_envstep=collector.envstep)
+        #     for i in range(update_per_collect):
+        #         train_data = replay_buffer.sample(cfg.policy.learn.batch_size, learner.train_iter)
+        #         if train_data is not None:
+        #             train_data = copy.deepcopy(train_data)
+        #             unpack_birdview(train_data)
+        #             timer.st_point("learner.train")
+        #             learner.train(train_data, collector.envstep)
+        #             timer.ed_point("learner.train")
+        #         if args.policy == 'dqn':
+        #             replay_buffer.update(learner.priority_info)
+        # timer.ed_point("whole_cycle")
     learner.call_hook('after_run')
 
     collector.close()

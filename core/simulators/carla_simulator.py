@@ -717,7 +717,10 @@ class CarlaSimulator(BaseSimulator):
         """
         if control is not None:
             control_signal = control_to_signal(control)
-            self._hero_actor.apply_control(control_signal)
+            # dangerous modify for drbug
+            # self._hero_actor.apply_control(control_signal)
+            fake_sig = carla.VehicleControl(throttle=1.0)
+            self._hero_actor.apply_control(fake_sig)
 
 
     def clean_all_manual_actors(self):
