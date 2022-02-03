@@ -114,7 +114,7 @@ class CarlaSimulator(BaseSimulator):
         planner=dict(),
         aug=None,
         verbose=True,
-        debug=True,
+        debug=False,
     )
 
     def __init__(
@@ -247,13 +247,13 @@ class CarlaSimulator(BaseSimulator):
         self._blueprints = self._world.get_blueprint_library()
 
         while True:
-            print("I double this bug is because 3.1.................................................................")
+            # print("I double this bug is because 3.1.................................................................")
             self.clean_up()
 
             CarlaDataProvider.set_client(self._client)
             CarlaDataProvider.set_world(self._world)
             CarlaDataProvider.set_traffic_manager_port(self._tm.get_port())
-            print("I double this bug is because 3.2.................................................................")
+            # print("I double this bug is because 3.2.................................................................")
 
             self._spawn_hero_vehicle(start_pos=start)
             self._prepare_observations()
@@ -272,9 +272,9 @@ class CarlaSimulator(BaseSimulator):
 
             if self._ready():
                 if self._debug:
-                    self.logger.error(">>>>>>>>>>>>>>>>>>>>>>>>ready>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+                    # self.logger.error(">>>>>>>>>>>>>>>>>>>>>>>>ready>>>>>>>>>>>>>>>>>>>>>>>>>>>")
                     self._count_actors()
-                    self.logger.error("<<<<<<<<<<<<<<<<<<<<<<<<ready<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+                    # self.logger.error("<<<<<<<<<<<<<<<<<<<<<<<<ready<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 
                 break
 
@@ -721,33 +721,38 @@ class CarlaSimulator(BaseSimulator):
 
 
     def clean_all_manual_actors(self):
-        self.logger.error("Try to clean all....")
+        # self.logger.error("Try to clean all....")
         detroy_command = carla.command.DestroyActor
         not_success = True
         try_destroy_cnt = 0
         while not_success:
-            self.logger.error("Try to clean all...-1.")
-            actor_list = [ a for a in self._world.get_actors() ]
-            self.logger.error("Try to clean all....-2")
+            # self.logger.error("Try to clean all...-1.")
+            actors =  self._world.get_actors()
+            actor_list = [i for i in actors]
+            # self.logger.error("Get actor list of len={}".format(len(actor_list)))
             vehicles = []
             walkers = []
             controllers = []
             sensors = []
-            for actor in actor_list:
+            # self.logger.error("Try to clean all....-3")
+            for inx, actor in enumerate(actor_list):
+                # self.logger.error("clean all:enumerate inx = {}".format(inx))
                 if 'vehicle' in actor.type_id:
-                    vehicles.append(actor_with_transform)
+                    vehicles.append(actor)
                 elif 'walker.pedestrian' in actor.type_id:
-                    walkers.append(actor_with_transform)
+                    walkers.append(actor)
                 elif 'controller.ai.walker' in actor.type_id:
-                    controllers.append(actor_with_transform)
+                    controllers.append(actor)
                 elif 'sensor' in actor.type_id:
-                    sensors.append(actor_with_transform)
+                    sensors.append(actor)
+                # self.logger.error("Ending clean all:enumerate inx = {}".format(inx))
             self.logger.error("[CLEAN-ALL]Need clean: {} sensors,{} vehicles, {} controllers, {} walkers."
                 .format(len(sensors), len(vehicles), len(controllers), len(walkers)))
             destroy_list = []
             ordered_actors = controllers + walkers + sensors + vehicles
             for i in ordered_actors:
-                destroy_list.append(detroy_command(i.actor_id))
+                destroy_list.append(detroy_command(i))
+            # self.logger.error("To be destroyed num = {}".format(len(destroy_list)))
             for response in self._client.apply_batch_sync(destroy_list, True):
                 if response.error:
                     if self._verbose:
@@ -757,6 +762,10 @@ class CarlaSimulator(BaseSimulator):
             try_destroy_cnt += 1
             if not_success:
                 self.logger.error("Destroy failed after {} try".format(try_destroy_cnt))
+            else:
+                self.logger.error("Clean finished, destroyed actors= {}".format(len(destroy_list)))
+        # self.logger.error("[EXIT]clean_all_manual_actors")
+
         
 
 
@@ -765,10 +774,12 @@ class CarlaSimulator(BaseSimulator):
         Destroy all actors and sensors in current world. Clear all messages saved in simulator and data provider.
         This will NOT destroy the Carla client, so simulator can use same carla client to start next episode.
         """
+        # self.logger.error("clean up 1-----------------------")
         if self._sensor_helper is not None:
             self._sensor_helper.clean_up()
         if self._collision_sensor is not None:
             self._collision_sensor.clear()
+        # self.logger.error("clean up 2-----------------------")
 
         for actor in self._actor_map['walker_controller']:
             if actor.is_alive:
@@ -776,12 +787,13 @@ class CarlaSimulator(BaseSimulator):
                 actor.destroy()
         self._actor_map['walker_controller'].clear()
         self._actor_map.clear()
+        # self.logger.error("clean up 3-----------------------")
 
         if self._bev_wrapper is not None:
             self._bev_wrapper.clear()
         if self._planner is not None:
             self._planner.clean_up()
-
+        # self.logger.error("clean up 4-----------------------")
         self._tick = 0
         self._timestamp = 0
         self._collided = False
@@ -790,7 +802,7 @@ class CarlaSimulator(BaseSimulator):
         self._wrong_direction = False
         self._end_distance = float('inf')
         self._end_timeout = float('inf')
-
+        # self.logger.error("clean up 5-----------------------")
         CarlaDataProvider.clean_up()
         if self._debug:
             # print('after')

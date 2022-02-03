@@ -13,6 +13,8 @@ from core.utils.simulator_utils.carla_utils import visualize_birdview
 from core.utils.env_utils.stuck_detector import StuckDetector
 from core.utils.simulator_utils.carla_utils import lane_mid_distance
 
+import traceback
+
 
 def fix_lidar_points_num(obs_out, max_lidar_pt_num):
     lidar_pt_num = obs_out['toplidar'].shape[0]
@@ -138,6 +140,8 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._visualizer = None
         self._last_canvas = None
 
+        # self.weird_bug = False
+
     def _init_carla_simulator(self) -> None:
         if not self._use_local_carla:
             print("------ Run Carla on Port: %d, GPU: %d ------" % (self._carla_port, 0))
@@ -223,6 +227,11 @@ class SimpleCarlaEnv(BaseDriveEnv):
         :Returns:
             Tuple[Any, float, bool, Dict]: A tuple contains observation, reward, done and information.
         """
+        # if self.weird_bug:
+            # self.logger.error("now print weird bug stacks===========================================")
+            # traceback.print_stack()            
+            # self.logger.error("============================================hope it helps u============")
+        # self.logger.error("start to perform step... ")
         if action is not None:
             for key in ['throttle', 'brake']:
                 if key in action:
@@ -233,8 +242,10 @@ class SimpleCarlaEnv(BaseDriveEnv):
             self._simulator_databuffer['action'] = action
         else:
             self._simulator_databuffer['action'] = dict()
+        # self.logger.error("start to perform step... before simu runstep")
         self._simulator.run_step()
         self._tick += 1
+        # self.logger.error("start to perform step... after simu runstep, tick=".format(self._tick))
 
         obs = self.get_observations()
 
@@ -265,14 +276,19 @@ class SimpleCarlaEnv(BaseDriveEnv):
         )
 
         done = self.is_success() or self.is_failure()
+        # self.logger.error("current step  done={}, tick={}".format(done, self._tick))
         if done:
-            self.logger.error("I double this bug is because 1.1.................................................................")
+            # self.logger.error("I double this bug is because 1.1.................................................................")
+            # traceback.print_stack()
+            # self.weird_bug = True
             self._simulator.clean_up()
-            self.logger.error("I double this bug is because 1.2.................................................................")
+            # self.logger.error("I double this bug is because 1.2.................................................................")
             if self._visualizer is not None:
+                # self.logger.error("visual this is the 280 line of carla env")
                 self._visualizer.done()
+                # self.logger.error("visual this is the 282 line of carla env")
                 self._visualizer = None
-
+            # self.logger.error("done over.................................................................")
         return obs, self._reward, done, info
 
     def close(self) -> None:
@@ -280,9 +296,9 @@ class SimpleCarlaEnv(BaseDriveEnv):
         Delete simulator & visualizer instances and close the environment.
         """
         if self._launched_simulator:
-            self.logger.error("I double this bug is because 2.1.................................................................")
+            # self.logger.error("I double this bug is because 2.1.................................................................")
             self._simulator.clean_up()
-            self.logger.error("I double this bug is because 2.2.................................................................")
+            # self.logger.error("I double this bug is because 2.2.................................................................")
             self._simulator._set_sync_mode(False)
             del self._simulator
             self._launched_simulator = False
