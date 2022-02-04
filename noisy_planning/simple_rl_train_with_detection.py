@@ -12,7 +12,8 @@ import logging
 import faulthandler
 
 # ding
-from ding.envs import SyncSubprocessEnvManager, BaseEnvManager
+from ding.envs import  BaseEnvManager
+from noisy_planning.carla_env_manager import CarlaSyncSubprocessEnvManager
 from ding.policy import DQNPolicy, PPOPolicy, TD3Policy, SACPolicy, DDPGPolicy
 from ding.worker import BaseLearner, SampleSerialCollector, AdvancedReplayBuffer, NaiveReplayBuffer
 from ding.utils import set_pkg_seed
@@ -64,7 +65,7 @@ def get_cfg(args):
     use_buffer = AdvancedReplayBuffer if args.policy != 'ppo' else None
     cfg = compile_config(
         cfg=default_train_config,
-        env_manager=SyncSubprocessEnvManager,
+        env_manager=CarlaSyncSubprocessEnvManager,
         policy=use_policy,
         learner=BaseLearner,
         collector=SampleSerialCollector,
@@ -251,7 +252,7 @@ def post_processing_data_collection(data_list, detector, env_cfg):
     pivots = [i for i in range(0, obs_list_size, max_batch_size)] + [obs_list_size]
     seg_num = len(pivots) - 1
     for i in range(seg_num):
-        print('[DET]processing minibatch-{}...'.format(i))
+        logger.error('[DET]processing minibatch-{}...'.format(i))
         detection_process(obs_list[pivots[i]: pivots[i + 1]], detector, env_cfg)
 
     # debug: check detection process
@@ -264,6 +265,18 @@ timer = TestTimer()
 
 
 def main(args, seed=0):
+
+
+    logger = logging.getLogger("[Main]")
+    logger.handlers.clear()
+    if len(logger.handlers) == 0:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(thread)0x- %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    logger.propagate = False
+    logger.setLevel(logging.DEBUG)
+
     pygame.init()
     enable_eval = False
     cfg = get_cfg(args)
@@ -279,7 +292,7 @@ def main(args, seed=0):
     else:
         wrapped_env = wrapped_continuous_env
 
-    collector_env = SyncSubprocessEnvManager(
+    collector_env = CarlaSyncSubprocessEnvManager(
         env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.collect, *tcp_list[i]) for i in range(collector_env_num)],
         cfg=cfg.env.manager.collect,
     )
@@ -293,10 +306,10 @@ def main(args, seed=0):
     timer.st_point("Init_detector")
     detection_model = None
     if cfg.env.enable_detector:
-        print("[MAIN]Detector enabled.")
+        logger.error("Detector enabled.")
         detection_model = DetectionModelWrapper(cfg=cfg.env.detector)
     else:
-        print("[MAIN]Detector not enabled.")
+        logger.error("Detector not enabled.")
     timer.ed_point("Init_detector")
 
     # Uncomment this to add save replay when evaluation
@@ -358,15 +371,15 @@ def main(args, seed=0):
 
     while True:
         timer.st_point("whole_cycle")
-        print('[MAIN]learner.train_iter={}'.format(learner.train_iter))
+        logger.error('learner.train_iter={}'.format(learner.train_iter))
         if enable_eval and evaluator.should_eval(learner.train_iter):
-            print('[EVAL]Enter evaluation.')
+            logger.error('[EVAL]Enter evaluation.')
             timer.st_point("eval")
             stop, rate = evaluator.eval(learner.save_checkpoint, learner.train_iter, collector.envstep)
             timer.ed_point("eval")
             if stop:
                 break
-        print('[MAIN]Enter collection. _default_n_sample={}'.format(collector._default_n_sample))
+        logger.error('Enter collection. _default_n_sample={}'.format(collector._default_n_sample))
         timer.st_point("collect")
         if args.policy == 'dqn':
             eps = epsilon_greedy(collector.envstep)
@@ -396,6 +409,7 @@ def main(args, seed=0):
         #         if args.policy == 'dqn':
         #             replay_buffer.update(learner.priority_info)
         # timer.ed_point("whole_cycle")
+        logger.error("................................................cycle end................................................")
     learner.call_hook('after_run')
 
     collector.close()
@@ -405,7 +419,7 @@ def main(args, seed=0):
     if args.policy != 'ppo':
         replay_buffer.close()
   
-    print('finish')
+    logger.error('finish')
 
 
 if __name__ == "__main__":
