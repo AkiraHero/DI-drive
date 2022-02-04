@@ -21,7 +21,7 @@ from core.utils.others.tcp_helper import find_traffic_manager_port
 import carla
 from carla import WeatherParameters
 
-import logging
+from noisy_planning.debug_utils import generate_general_logger
 
 PRESET_WEATHERS = {
     1: WeatherParameters.ClearNoon,
@@ -127,16 +127,8 @@ class CarlaSimulator(BaseSimulator):
             timeout: float = 60.0,
             **kwargs
     ) -> None:
-        self.logger = logging.getLogger("[Simulator-{}]".format(port))
-        while self.logger.handlers:
-            self.logger.handlers.pop()
-        if len(self.logger.handlers) == 0:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(thread)0x- %(message)s')
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
-        self.logger.propagate = False
-        self.logger.setLevel(logging.WARNING)
+        logger_name = "[Simulator-{}]".format(port)
+        self.logger = generate_general_logger(logger_name)
         """
         Init Carla simulator.
         """

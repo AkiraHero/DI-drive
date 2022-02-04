@@ -14,6 +14,7 @@ from ding.utils import ENV_MANAGER_REGISTRY
 from ding.utils import PropagatingThread
 from ding.envs.env.base_env import BaseEnvTimestep
 
+from noisy_planning.debug_utils import generate_general_logger
 
 '''
 compatable with Ding v0.2.1
@@ -29,15 +30,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         ) -> None:
         super(CarlaSyncSubprocessEnvManager, self).__init__(env_fn, cfg)
         self._env_reset_try_num = {}
-        self.logger = logging.getLogger("[Manager]")
-        self.logger.handlers.clear()
-        if len(self.logger.handlers) == 0:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(thread)0x- %(message)s')
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
-        self.logger.propagate = False
-        self.logger.setLevel(logging.WARNING)
+        self.logger = generate_general_logger("[Manager]")
 
 
     def _check_data(self, data: Dict, close: bool = False) -> None:

@@ -67,4 +67,16 @@ class TestTimer:
         self.logger.info("[{}] {}s".format(tag, time_diff))
         self.time_dict.pop(tag)
 
+def generate_general_logger(logger_name):
+    logger = logging.getLogger(logger_name)
+    logger.handlers.clear()
+    if len(logger.handlers) == 0:
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(thread)0x- %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    logger.propagate = False
+    logger.setLevel(logging.WARNING)
+    return logger
+
 

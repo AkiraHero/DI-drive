@@ -1,5 +1,3 @@
-import sys
-sys.path.append("/home/xlju/carla-0.9.11-py3.7-linux-x86_64.egg")
 # system
 import argparse
 import numpy as np
@@ -8,8 +6,6 @@ import copy
 import pygame
 import torch
 import carla
-import logging
-import faulthandler
 
 # ding
 from ding.envs import  BaseEnvManager
@@ -30,10 +26,10 @@ from core.utils.others.ding_utils import read_ding_config
 from core.envs import SimpleCarlaEnv, BenchmarkEnvWrapper
 from core.utils.others.tcp_helper import parse_carla_tcp
 from core.eval import SerialEvaluator
-from noisy_planning.debug_utils import TestTimer
 
 # other module
 from noisy_planning.detection_model.detection_model_wrapper import DetectionModelWrapper
+from noisy_planning.debug_utils import generate_general_logger, TestTimer
 from tensorboardX import SummaryWriter
 
 
@@ -72,6 +68,7 @@ def get_cfg(args):
         buffer=use_buffer,
     )
     return cfg
+
 
 def get_cls(spec):
     policy_cls, model_cls = {
@@ -177,12 +174,12 @@ def visualize_points(points):
     point_cloud.points = od.utility.Vector3dVector(points[:, 0:3].reshape(-1, 3))
     od.visualization.draw_geometries([point_cloud], width=800, height=600)
 
+
 def check_obs_id(data_list):
     cur_ids = [id(i['obs']) for i in data_list]
     next_ids = [id(i['next_obs']) for i in data_list]
     print("cur_ids:", cur_ids)
     print("next_ids:", next_ids)
-
 
 
 def detection_process(data_list, detector, env_cfg):
@@ -227,9 +224,7 @@ def detection_process(data_list, detector, env_cfg):
         i['birdview_using_detection'] = True
 
 
-
-
-def post_processing_data_collection(data_list, detector, env_cfg):
+def post_processing_data_collection(data_list, detector, env_cfg, logger=None):
     assert isinstance(data_list, list)
 
     # unpack_birdview
@@ -252,7 +247,8 @@ def post_processing_data_collection(data_list, detector, env_cfg):
     pivots = [i for i in range(0, obs_list_size, max_batch_size)] + [obs_list_size]
     seg_num = len(pivots) - 1
     for i in range(seg_num):
-        logger.error('[DET]processing minibatch-{}...'.format(i))
+        if logger:
+            logger.error('[DET]processing minibatch-{}...'.format(i))
         detection_process(obs_list[pivots[i]: pivots[i + 1]], detector, env_cfg)
 
     # debug: check detection process
@@ -261,23 +257,13 @@ def post_processing_data_collection(data_list, detector, env_cfg):
         assert i['next_obs']['birdview_using_detection'] is True
 
 
-timer = TestTimer()
 
 
 def main(args, seed=0):
+    logger = generate_general_logger("MAIN")
+    timer = TestTimer()
 
-
-    logger = logging.getLogger("[Main]")
-    logger.handlers.clear()
-    if len(logger.handlers) == 0:
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(thread)0x- %(message)s')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-    logger.propagate = False
-    logger.setLevel(logging.DEBUG)
-
-    pygame.init()
+    # pygame.init()
     enable_eval = False
     cfg = get_cfg(args)
     tcp_list = parse_carla_tcp(cfg.server)
@@ -363,7 +349,7 @@ def main(args, seed=0):
             new_data = collector.collect(n_sample=cfg.policy.collect.pre_sample_num,
                                          train_iter=learner.train_iter)
         timer.st_point("post_processing")
-        post_processing_data_collection(new_data, detection_model, cfg.env)
+        post_processing_data_collection(new_data, detection_model, cfg.env, logger=logger)
         timer.ed_point("post_processing")
 
         replay_buffer.push(new_data, cur_collector_envstep=collector.envstep)
@@ -390,7 +376,7 @@ def main(args, seed=0):
 
         # unpack_birdview(new_data)
         timer.st_point("post_processing")
-        post_processing_data_collection(new_data, detection_model, cfg.env)
+        post_processing_data_collection(new_data, detection_model, cfg.env, logger=logger)
         timer.ed_point("post_processing")
 
         if args.policy == 'ppo':
