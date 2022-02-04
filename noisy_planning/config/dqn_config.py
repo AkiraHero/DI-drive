@@ -17,13 +17,13 @@ dqn_config = dict(
                 resolution=1,
             ),
             obs=(
-                dict(
-                    name='birdview',
-                    type='bev',
-                    size=[160, 160],
-                    pixels_per_meter=5,
-                    pixels_ahead_vehicle=100,
-                ),
+                # dict(
+                #     name='birdview',
+                #     type='bev',
+                #     size=[160, 160],
+                #     pixels_per_meter=5,
+                #     pixels_ahead_vehicle=100,
+                # ),
                 dict(
                     name='toplidar',
                     type='lidar',
@@ -66,9 +66,9 @@ dqn_config = dict(
         off_route_is_failure=True,
         off_route_distance=7.5,
         replay_path='./dqn_video',
-        visualize=dict(
-            type='birdview',
-        ),
+        # visualize=dict(
+        #     type='birdview',
+        # ),
         manager=dict(
             collect=dict(
                 auto_reset=True,

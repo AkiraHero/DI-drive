@@ -34,10 +34,15 @@ DEFAULT_STEER_LIST = [
 
 def get_obs_out(obs):
     obs_out = {
-        'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
+        # 'birdview': obs['birdview'][..., [0, 1, 5, 6, 8]],
         'speed': (obs['speed'] / 25).astype(np.float32),
 #        'bev_elements': obs['birdview_initial_dict']
     }
+    if 'birdview' in obs.keys():
+        obs_out['birdview'] =  obs['birdview'][..., [0, 1, 5, 6, 8]]
+    #debug
+    else:
+        obs_out['birdview'] = np.zeros([160, 160, 5])
     if 'toplidar' in obs.keys():
         obs_out['lidar_points'] = obs['toplidar']
     return obs_out
