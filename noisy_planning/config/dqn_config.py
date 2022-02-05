@@ -125,7 +125,7 @@ dqn_config = dict(
             evaluator=dict(
                 eval_freq=2000,
                 n_episode=5,
-                stop_rate=0.7,
+                stop_rate=0.9,
                 transform_obs=True,
             ),
         ),

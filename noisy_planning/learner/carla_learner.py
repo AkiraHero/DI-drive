@@ -120,12 +120,16 @@ class CarlaLearner(BaseLearner):
 
         while True:
             self.logger.info('learner.train_iter={}'.format(self.train_iter))
-            if self._evaluator and self._evaluator.should_eval(self.train_iter):
-                self.logger.info('[EVAL]Enter evaluation.')
-                stop, rate = self._evaluator.eval(self.save_checkpoint, self.train_iter, self._collector.envstep)
-                if stop:
-                    break
-            self.logger.error('Enter collection. _default_n_sample={}'.format(self._collector._default_n_sample))
+            try:
+                if self._evaluator and self._evaluator.should_eval(self.train_iter):
+                    self.logger.info('[EVAL]Enter evaluation.')
+                    stop, rate = self._evaluator.eval(self.save_checkpoint, self.train_iter, self._collector.envstep)
+                    if stop:
+                        break
+            except Exception as e:
+                self.logger.error("Fail to do evaluation...")
+                self.logger.error(str(e))
+            self.logger.info('Enter collection. _default_n_sample={}'.format(self._collector._default_n_sample))
 
             if self._policy_name == 'dqn':
                 eps = self._epsilon_greedy(self._collector.envstep)

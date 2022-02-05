@@ -84,7 +84,7 @@ def main(args, seed=0):
     '''
     Config
     '''
-    enable_eval = False
+    enable_eval = True
     cfg = get_cfg(args)
     tcp_list = parse_carla_tcp(cfg.server)
     collector_env_num, evaluator_env_num = cfg.env.collector_env_num, cfg.env.evaluator_env_num
@@ -140,20 +140,25 @@ def main(args, seed=0):
     '''
     evaluator = None
     if enable_eval:
-        evaluate_env = BaseEnvManager(
-            env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.eval, *tcp_list[collector_env_num + i]) for i in
-                    range(evaluator_env_num)],
-            cfg=cfg.env.manager.eval,
-        )
-        # Uncomment this to add save replay when evaluation
-        # evaluate_env.enable_save_replay(cfg.env.replay_path)
-        evaluate_env.seed(seed)
-        evaluator = SerialEvaluator(cfg.policy.eval.evaluator,
-                                    evaluate_env,
-                                    policy.eval_mode,
-                                    tb_logger,
-                                    exp_name=cfg.exp_name)
-        learner.set_evaluator(evaluator)
+        try:
+            evaluate_env = BaseEnvManager(
+                env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.eval, *tcp_list[collector_env_num + i]) for i in
+                        range(evaluator_env_num)],
+                cfg=cfg.env.manager.eval,
+            )
+            # Uncomment this to add save replay when evaluation
+            # evaluate_env.enable_save_replay(cfg.env.replay_path)
+            evaluate_env.seed(seed)
+            evaluator = SerialEvaluator(cfg.policy.eval.evaluator,
+                                        evaluate_env,
+                                        policy.eval_mode,
+                                        tb_logger,
+                                        exp_name=cfg.exp_name)
+            learner.set_evaluator(evaluator)
+        except Exception as e:
+            logger.error("Fail to initialize evaluator...")
+            logger.error(str(e))
+
 
     '''
     Detector
