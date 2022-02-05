@@ -147,7 +147,7 @@ class CarlaLearner(BaseLearner):
                         train_data = copy.deepcopy(train_data)
                         unpack_birdview(train_data)
                         self.train(train_data, self._collector.envstep)
-                    if self._policy_name.policy == 'dqn':
+                    if self._policy_name == 'dqn':
                         self._replay_buffer.update(self.priority_info)
             self.logger.info(
                 "........................................cycle end.........................................")

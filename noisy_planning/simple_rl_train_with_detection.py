@@ -119,6 +119,10 @@ def main(args, seed=0):
     else:
         wrapped_env = wrapped_continuous_env
 
+    # if detection not enabled, forbid lidar collection
+    if not cfg.env.enable_detector:
+        cfg.env.simulator.obs = [i for i in cfg.env.simulator.obs if i['type'] != 'lidar']
+
     collector_env = CarlaSyncSubprocessEnvManager(
         env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.collect, *tcp_list[i]) for i in range(collector_env_num)],
         cfg=cfg.env.manager.collect,
