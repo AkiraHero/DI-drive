@@ -1,5 +1,6 @@
 # system
 import copy
+import pickle
 import time
 
 from collections import namedtuple
@@ -67,6 +68,10 @@ class CarlaLearner(BaseLearner):
         assert self._collector_config is not None
         assert self._replay_buffer is not None
         assert self._policy_name is not None
+
+    @staticmethod
+    def check_batch_data(data_list):
+        pass
 
     def post_processing_data_collection(self, data_list):
         assert isinstance(data_list, list)
@@ -150,7 +155,12 @@ class CarlaLearner(BaseLearner):
                     if train_data is not None:
                         train_data = copy.deepcopy(train_data)
                         unpack_birdview(train_data)
-                        self.train(train_data, self._collector.envstep)
+                        try:
+                            self.train(train_data, self._collector.envstep)
+                        except Exception as e:
+                            with open("debug_data_pickle.pp", 'wb') as f:
+                                pickle.dump(train_data, f)
+                            raise e
                     if self._policy_name == 'dqn':
                         self._replay_buffer.update(self.priority_info)
             self.logger.info(

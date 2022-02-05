@@ -79,7 +79,15 @@ dqn_config = dict(
                 step_timeout=120,
                 reset_timeout=120,
             ),
-            eval=dict()
+            eval=dict(
+                auto_reset=True,
+                shared_memory=False,
+                context='spawn',
+                max_retry=1,
+                retry_type='renew',
+                step_timeout=120,
+                reset_timeout=120,
+            )
         ),
         wrapper=dict(
             # Collect and eval suites for training

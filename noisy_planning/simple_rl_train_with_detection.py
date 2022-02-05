@@ -1,7 +1,7 @@
 # system
 import argparse
 from functools import partial
-
+import traceback
 
 # ding
 from ding.envs import BaseEnvManager
@@ -141,7 +141,7 @@ def main(args, seed=0):
     evaluator = None
     if enable_eval:
         try:
-            evaluate_env = BaseEnvManager(
+            evaluate_env = CarlaSyncSubprocessEnvManager(
                 env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.eval, *tcp_list[collector_env_num + i]) for i in
                         range(evaluator_env_num)],
                 cfg=cfg.env.manager.eval,
@@ -158,6 +158,7 @@ def main(args, seed=0):
         except Exception as e:
             logger.error("Fail to initialize evaluator...")
             logger.error(str(e))
+            logger.error(traceback.format_tb(e.__traceback__))
 
 
     '''
