@@ -108,6 +108,7 @@ dqn_config = dict(
                     # Pre-train model path
                     load_ckpt_before_run='',
                     log_show_after_iter=1000,
+                    save_ckpt_after_iter=1000,
                 ),
             ),
         ),

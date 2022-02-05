@@ -2,12 +2,9 @@
 Copyright 2021 OpenDILab. All Rights Reserved:
 Description: Carla simulator.
 '''
-import os
 import numpy as np
 import random
-from typing import Any, Union, Optional, Dict, List
-from distutils.version import LooseVersion
-import pkg_resources
+from typing import Optional, Dict
 from collections import defaultdict
 
 from .base_simulator import BaseSimulator
@@ -21,7 +18,7 @@ from core.utils.others.tcp_helper import find_traffic_manager_port
 import carla
 from carla import WeatherParameters
 
-from noisy_planning.debug_utils import generate_general_logger
+from noisy_planning.utils.debug_utils import generate_general_logger
 
 PRESET_WEATHERS = {
     1: WeatherParameters.ClearNoon,

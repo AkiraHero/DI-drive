@@ -37,6 +37,7 @@ def plot_pcl(points):
         cv2.circle(img, (px, py), 1, (255, 0, 255), 1)
     return cv2.flip(img, 0)
 
+
 def read_kitti_bin(file_name):
     with open(file_name, 'rb') as f:
         buf = f.read()

@@ -3,33 +3,18 @@ import time
 
 sys.path.append("/home/xlju/carla-0.9.11-py3.7-linux-x86_64.egg")
 
-
-import os
 import argparse
 import numpy as np
-from functools import partial
-from easydict import EasyDict
-import copy
-from tensorboardX import SummaryWriter
 
-from core.envs import SimpleCarlaEnv, BenchmarkEnvWrapper
-from core.utils.others.tcp_helper import parse_carla_tcp
-from core.eval import SerialEvaluator
-from ding.envs import SyncSubprocessEnvManager, BaseEnvManager
+from ding.envs import SyncSubprocessEnvManager
 from ding.policy import DQNPolicy, PPOPolicy, TD3Policy, SACPolicy, DDPGPolicy
-from ding.worker import BaseLearner, SampleSerialCollector, AdvancedReplayBuffer, NaiveReplayBuffer
-from ding.utils import set_pkg_seed
-from ding.rl_utils import get_epsilon_greedy_fn
+from ding.worker import BaseLearner, SampleSerialCollector, AdvancedReplayBuffer
 
 from demo.simple_rl.model import DQNRLModel, PPORLModel, TD3RLModel, SACRLModel, DDPGRLModel
-from demo.simple_rl.env_wrapper import DiscreteEnvWrapper, ContinuousEnvWrapper
-from core.utils.data_utils.bev_utils import unpack_birdview
 from core.utils.others.ding_utils import compile_config
 from core.utils.others.ding_utils import read_ding_config
 from core.envs import SimpleCarlaEnv
-import carla
-from simple_rl_train_with_detection import post_processing_data_collection
-from noisy_planning.detection_model.detection_model_wrapper import DetectionModelWrapper
+from noisy_planning.detector.detection_model_wrapper import DetectionModelWrapper
 
 
 def get_cls(spec):
@@ -80,8 +65,6 @@ def view_surfaces(surface_dict):
 
 if __name__ == '__main__':
     from core.utils.simulator_utils.carla_agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
-    from core.utils.simulator_utils.carla_agents.navigation.roaming_agent import RoamingAgent  # pylint: disable=import-error
-    from core.utils.simulator_utils.carla_agents.navigation.basic_agent import BasicAgent  # pylint: disable=import-error
     import random
     from simple_rl_train_with_detection import draw_detection_result
 

@@ -1,11 +1,8 @@
-from typing import Any, Union, List, Tuple, Dict, Callable, Optional
+from typing import Any, List, Dict, Callable
 from easydict import EasyDict
 
-import logging
 import traceback
-import random
 from collections import namedtuple
-
 
 from ding.envs import SyncSubprocessEnvManager
 from ding.envs.env_manager.subprocess_env_manager import is_abnormal_timestep
@@ -14,7 +11,7 @@ from ding.utils import ENV_MANAGER_REGISTRY
 from ding.utils import PropagatingThread
 from ding.envs.env.base_env import BaseEnvTimestep
 
-from noisy_planning.debug_utils import generate_general_logger
+from noisy_planning.utils.debug_utils import generate_general_logger
 
 '''
 compatable with Ding v0.2.1
@@ -27,11 +24,10 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             self,
             env_fn: List[Callable],
             cfg: EasyDict = EasyDict({}),
-        ) -> None:
+    ) -> None:
         super(CarlaSyncSubprocessEnvManager, self).__init__(env_fn, cfg)
         self._env_reset_try_num = {}
         self.logger = generate_general_logger("[Manager]")
-
 
     def _check_data(self, data: Dict, close: bool = False) -> None:
         exceptions = []
@@ -51,7 +47,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             if not close:
                 self.logger.error("We will not close the abnormal envs...")
                 for env_id in abnormal_env_ids:
-                    empty_data_info=dict(
+                    empty_data_info = dict(
                         comm_err=True
                     )
                     empty_data = BaseEnvTimestep(None, None, None, empty_data_info)
@@ -60,7 +56,6 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 self.logger.error("We will close the abnormal envs...")
                 self.close()
                 raise exceptions[0]
-
 
     def step(self, actions: Dict[int, Any]) -> Dict[int, namedtuple]:
         """
@@ -86,9 +81,9 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         env_ids = list(actions.keys())
         assert all([self._env_states[env_id] == EnvState.RUN for env_id in env_ids]
                    ), 'current env state are: {}, please check whether the requested env is in reset or done'.format(
-                       {env_id: self._env_states[env_id]
-                        for env_id in env_ids}
-                   )
+            {env_id: self._env_states[env_id]
+             for env_id in env_ids}
+        )
 
         ready_conn = []
         ready_env_ids = []
@@ -103,14 +98,12 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 self.logger.debug("env_id={} got error when performing sending in step().".format(env_id))
             except Exception as e:
                 self.logger.error('VEC_ENV_MANAGER: env {} step error in sending'.format(env_id))
-                self.logger.error('\nEnv Process step Exception:\n' + ''.join(traceback.format_tb(e.__traceback__)) + repr(e))
-
+                self.logger.error(
+                    '\nEnv Process step Exception:\n' + ''.join(traceback.format_tb(e.__traceback__)) + repr(e))
 
         # ===     This part is different from async one.     ===
         # === Because operate in this way is more efficient. ===
         timesteps = {}
-        # ready_conn = [self._pipe_parents[env_id] for env_id in env_ids]
-
         for env_id, p in zip(ready_env_ids, ready_conn):
             try:
                 self.logger.debug("try to receive step info from env_id={}".format(env_id))
@@ -120,26 +113,25 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                     self.logger.debug("[Done] try to receive step info from env_id={}".format(env_id))
                 else:
                     broken_envs.append(env_id)
-                    self.logger.debug("[Timeout] try to receive step info from env_id={}, timeout={}".format(env_id, self._connect_timeout))
+                    self.logger.debug("[Timeout] try to receive step info from env_id={}, timeout={}".format(env_id,
+                                                                                                             self._connect_timeout))
             except EOFError as e:
                 broken_envs.append(env_id)
                 self.logger.debug("env_id={} got error when performing recv in step().".format(env_id))
             except Exception as e:
                 self.logger.error('VEC_ENV_MANAGER: env {} step error'.format(env_id))
-                self.logger.error('\nEnv Process step Exception:\n' + ''.join(traceback.format_tb(e.__traceback__)) + repr(e))
+                self.logger.error(
+                    '\nEnv Process step Exception:\n' + ''.join(traceback.format_tb(e.__traceback__)) + repr(e))
 
         # fill data for abnormal env
         if len(broken_envs):
             self.logger.error("{} envs to be reset due to comm error!".format(len(broken_envs)))
         for ab_env_id in broken_envs:
-            
-            empty_data_info=dict(
+            empty_data_info = dict(
                 comm_err=True
             )
             empty_data = BaseEnvTimestep(None, None, None, empty_data_info)
             timesteps[ab_env_id] = empty_data
-
-
 
         self._check_data(timesteps)
         # ======================================================
@@ -153,7 +145,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 continue
             if 'comm_err' in timestep.info.keys() and timestep.info['comm_err']:
                 self._env_states[env_id] = EnvState.RESET
-                reset_thread = PropagatingThread(target=self._reset, args=(env_id, ), name='regular_reset')
+                reset_thread = PropagatingThread(target=self._reset, args=(env_id,), name='regular_reset')
                 reset_thread.daemon = True
                 reset_thread.start()
                 if self._force_reproducibility:
@@ -162,7 +154,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 self._env_episode_count[env_id] += 1
                 if self._env_episode_count[env_id] < self._episode_num and self._auto_reset:
                     self._env_states[env_id] = EnvState.RESET
-                    reset_thread = PropagatingThread(target=self._reset, args=(env_id, ), name='regular_reset')
+                    reset_thread = PropagatingThread(target=self._reset, args=(env_id,), name='regular_reset')
                     reset_thread.daemon = True
                     reset_thread.start()
                     if self._force_reproducibility:
@@ -173,14 +165,14 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 self._ready_obs[env_id] = timestep.obs
         return timesteps
 
-
     def _reset(self, env_id: int) -> None:
 
         @retry_wrapper(max_retry=self._max_retry, waiting_time=self._retry_waiting_time)
         def reset_fn():
             self._env_reset_try_num[env_id] += 1
             if self._env_reset_try_num[env_id] > 1:
-                self.logger.error("VEC_ENV_MANAGER: Resetting env={} for {} time(s).".format(env_id, self._env_reset_try_num[env_id]))
+                self.logger.error(
+                    "VEC_ENV_MANAGER: Resetting env={} for {} time(s).".format(env_id, self._env_reset_try_num[env_id]))
             if self._pipe_parents[env_id].poll():
                 recv_data = self._pipe_parents[env_id].recv()
                 raise Exception("unread data left before sending to the pipe: {}".format(repr(recv_data)))
@@ -236,7 +228,8 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             return self._reset(env_id)
         except Exception as e:
             self.logger.error('VEC_ENV_MANAGER: env {} reset error'.format(env_id))
-            self.logger.error('\nEnv Process Reset Exception:\n' + ''.join(traceback.format_tb(e.__traceback__)) + repr(e))
+            self.logger.error(
+                '\nEnv Process Reset Exception:\n' + ''.join(traceback.format_tb(e.__traceback__)) + repr(e))
             if self._closed:  # exception cased by main thread closing parent_remote
                 self.logger.error("Ready to return, for self._closed is true!")
                 return
@@ -244,4 +237,3 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 self.logger.error("Ready to close for unonymous exception...")
                 self.close()
                 raise e
-

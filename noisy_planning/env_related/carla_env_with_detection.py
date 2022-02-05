@@ -1,5 +1,5 @@
 from core.envs.simple_carla_env import SimpleCarlaEnv
-from noisy_planning.detection_model.detection_model_wrapper import DetectionModelWrapper
+from noisy_planning.detector.detection_model_wrapper import DetectionModelWrapper
 import numpy as np
 
 class CarlaEnvWithDetection(SimpleCarlaEnv):
