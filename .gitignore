@@ -11,6 +11,8 @@
 *.log.*
 *.sig
 *.ckpt
+*.txt
+core.*
 
 pkg/
 src/
