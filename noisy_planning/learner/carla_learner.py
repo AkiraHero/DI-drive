@@ -19,6 +19,9 @@ from noisy_planning.detector.detection_model_wrapper import DetectionModelWrappe
 from tensorboardX import SummaryWriter
 from noisy_planning.detector.detection_utils import detection_process
 
+# debug
+from noisy_planning.utils.debug_utils import TestTimer
+timer = TestTimer()
 
 class CarlaLearner(BaseLearner):
     def __init__(self,
@@ -95,7 +98,7 @@ class CarlaLearner(BaseLearner):
         pivots = [i for i in range(0, obs_list_size, max_batch_size)] + [obs_list_size]
         seg_num = len(pivots) - 1
         for i in range(seg_num):
-            self.logger.info('[DET]processing minibatch-{}...'.format(i))
+            self.logger.debug('[DET]processing minibatch-{}...'.format(i))
             detection_process(obs_list[pivots[i]: pivots[i + 1]], self._detection_model, self._bev_obs_config)
 
         # debug: check detection process
@@ -124,6 +127,7 @@ class CarlaLearner(BaseLearner):
             self._replay_buffer.push(new_data, cur_collector_envstep=self._collector.envstep)
 
         while True:
+            timer.st_point("Current Loop")
             self.logger.info('learner.train_iter={}'.format(self.train_iter))
             try:
                 if self._evaluator and self._evaluator.should_eval(self.train_iter):
@@ -136,15 +140,20 @@ class CarlaLearner(BaseLearner):
                 self.logger.error(str(e))
             self.logger.info('Enter collection. _default_n_sample={}'.format(self._collector._default_n_sample))
 
+            timer.st_point("New Data Collection")
             if self._policy_name == 'dqn':
                 eps = self._epsilon_greedy(self._collector.envstep)
                 new_data = self._collector.collect(train_iter=self.train_iter, policy_kwargs={'eps': eps})
             else:
                 new_data = self._collector.collect(train_iter=self.train_iter)
+            timer.ed_point("New Data Collection")
 
+            timer.st_point("New Data PostProcessing")
             # unpack_birdview(new_data)
             self.post_processing_data_collection(new_data)
+            timer.ed_point("New Data PostProcessing")
 
+            timer.st_point("Sample and Training")
             if self._policy_name == 'ppo':
                 self.train(new_data, self._collector.envstep)
             else:
@@ -163,9 +172,12 @@ class CarlaLearner(BaseLearner):
                             raise e
                     if self._policy_name == 'dqn':
                         self._replay_buffer.update(self.priority_info)
+            timer.ed_point("Sample and Training")
+            timer.ed_point("Current Loop")
             self.logger.info(
                 "........................................cycle end.........................................")
 
         self._learner_done = True
         # after run hook
         self.call_hook('after_run')
+
