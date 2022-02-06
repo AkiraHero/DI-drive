@@ -142,4 +142,4 @@ def detection_process(data_list, detector, env_bev_obs_cfg):
         # walker_dim = torch.Tensor(walker_dim, device=device_here).to(dtype_here)
         i['birdview'][:, :, 2] = vehicle_dim
         i['birdview'][:, :, 3] = walker_dim
-        i['detected'] = True
+        i['detected'] = 1.0 # avoid batch collate error, use float

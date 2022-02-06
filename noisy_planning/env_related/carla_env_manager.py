@@ -299,7 +299,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         if self._detection_model is not None:
             data_list = []
             for v in res_dict.values():
-                if 'detected' not in v.keys() or i['detected'] == False:
+                if 'detected' not in v.keys() or i['detected'] != 1.0:
                     data_list.append(v)
             if len(data_list):
                 self.insert_detection_result(data_list)
