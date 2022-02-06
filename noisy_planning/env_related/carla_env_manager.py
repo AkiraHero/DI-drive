@@ -59,7 +59,8 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 self.logger.error("We will not close the abnormal envs...")
                 for env_id in abnormal_env_ids:
                     empty_data_info = dict(
-                        comm_err=True
+                        comm_err=True,
+                        abnormal=True,
                     )
                     empty_data = BaseEnvTimestep(None, None, None, empty_data_info)
                     data[env_id] = empty_data
@@ -139,7 +140,8 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             self.logger.error("{} envs to be reset due to comm error!".format(len(broken_envs)))
         for ab_env_id in broken_envs:
             empty_data_info = dict(
-                comm_err=True
+                comm_err=True,
+                abnormal=True,
             )
             empty_data = BaseEnvTimestep(None, None, None, empty_data_info)
             timesteps[ab_env_id] = empty_data
@@ -167,13 +169,6 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             if is_abnormal_timestep(timestep):
                 self._env_states[env_id] = EnvState.ERROR
                 continue
-            if 'comm_err' in timestep.info.keys() and timestep.info['comm_err']:
-                self._env_states[env_id] = EnvState.RESET
-                reset_thread = PropagatingThread(target=self._reset, args=(env_id,), name='regular_reset')
-                reset_thread.daemon = True
-                reset_thread.start()
-                if self._force_reproducibility:
-                    reset_thread.join()
             if timestep.done:
                 self._env_episode_count[env_id] += 1
                 if self._env_episode_count[env_id] < self._episode_num and self._auto_reset:
