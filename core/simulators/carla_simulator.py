@@ -716,7 +716,7 @@ class CarlaSimulator(BaseSimulator):
         detroy_command = carla.command.DestroyActor
         not_success = True
         try_destroy_cnt = 0
-        while not_success:
+        while not_success and try_destroy_cnt < 2:
             actors =  self._world.get_actors()
             actor_list = [i for i in actors]
             vehicles = []
@@ -736,12 +736,17 @@ class CarlaSimulator(BaseSimulator):
             ordered_actors = controllers + walkers + sensors + vehicles
             for i in ordered_actors:
                 destroy_list.append(detroy_command(i))
+            cur_loop_fail_flag = False
             for response in self._client.apply_batch_sync(destroy_list, True):
                 if response.error:
+                    cur_loop_fail_flag = True
                     if self._verbose:
                         self.logger.error('[SIMULATOR]' + str(response.error))
-                    not_success = True
-            not_success = False
+                    else:
+                        break
+            if cur_loop_fail_flag:
+                self.logger.warning("[SIMULATOR] fail to clean all actors.")
+            not_success = cur_loop_fail_flag
             try_destroy_cnt += 1
 
         
