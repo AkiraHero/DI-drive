@@ -150,6 +150,19 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         if self._shared_memory:
             for i, (env_id, timestep) in enumerate(timesteps.items()):
                 timesteps[env_id] = timestep._replace(obs=self._obs_buffers[env_id].get())
+
+        # perform detection
+        if self._detection_model is not None:
+            data_list = []
+            for ts in timesteps.values():
+                v = ts.obs
+                if v is not None:
+                    if 'detected' not in v.keys() or v['detected'] != 1.0:
+                        data_list.append(v)
+            if len(data_list):
+                self.insert_detection_result(data_list)
+
+
         for env_id, timestep in timesteps.items():
             if is_abnormal_timestep(timestep):
                 self._env_states[env_id] = EnvState.ERROR
@@ -299,7 +312,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         if self._detection_model is not None:
             data_list = []
             for v in res_dict.values():
-                if 'detected' not in v.keys() or i['detected'] != 1.0:
+                if 'detected' not in v.keys() or v['detected'] != 1.0:
                     data_list.append(v)
             if len(data_list):
                 self.insert_detection_result(data_list)
