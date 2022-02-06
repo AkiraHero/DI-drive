@@ -4,8 +4,8 @@ dqn_config = dict(
     exp_name='dqn21_bev32_buf2e5_lr1e4_bs128_ns3000_update4_train_ft',
     env=dict(
         # Collect and eval env num
-        collector_env_num=7,
-        evaluator_env_num=1,
+        collector_env_num=16,
+        evaluator_env_num=0,
         simulator=dict(
             town='Town01',
             delta_seconds=0.05,
@@ -39,12 +39,12 @@ dqn_config = dict(
                 ),
             )
         ),
-        enable_detector=False,
+        enable_detector=True,
         detector=dict(
             model_repo="openpcdet",
             model_name="pointpillar",
             ckpt="/cpfs2/user/juxiaoliang/checkpoint_epoch_160.pth",
-            max_batch_size=16,
+            max_batch_size=32,
             data_config=dict(
                 class_names=['Car', 'Pedestrian'],
                 point_feature_encoder=dict(
@@ -121,8 +121,8 @@ dqn_config = dict(
             ),
         ),
         collect=dict(
-            pre_sample_num=14,
-            n_sample=200,
+            pre_sample_num=3000,
+            n_sample=3000,
             collector=dict(
                 collect_print_freq=500,
                 deepcopy_obs=True,

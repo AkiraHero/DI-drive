@@ -53,9 +53,9 @@ def _add(suite_name, *args, **kwargs):
 # data collection town; no respawn to prevent missing frames
 _add('FullTown01-v0', n_vehicles=0, weathers=WEATHER_1, respawn_peds=False)
 # Train town, train weathers.
-_add('FullTown01-v1', n_vehicles=0, weathers=WEATHER_1)
+_add('FullTown01-v1', n_vehicles=200, n_pedestrians=200, weathers=WEATHER_1)
 _add('StraightTown01-v1', n_vehicles=0, weathers=WEATHER_1)
-_add('TurnTown01-v1', n_vehicles=0, weathers=WEATHER_1)
+_add('TurnTown01-v1', n_vehicles=200, n_pedestrians=200, weathers=WEATHER_1)
 _add('FullTown04-v1', n_vehicles=0, weathers=WEATHER_1)
 _add('StraightTown04-v1', n_vehicles=0, weathers=WEATHER_1)
 _add('ChangeLaneTown04-v1', n_vehicles=0, weathers=WEATHER_1)
