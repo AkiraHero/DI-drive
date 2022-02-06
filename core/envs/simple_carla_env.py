@@ -16,15 +16,6 @@ from core.utils.simulator_utils.carla_utils import lane_mid_distance
 import traceback
 
 
-def fix_lidar_points_num(obs_out, max_lidar_pt_num):
-    lidar_pt_num = obs_out['toplidar'].shape[0]
-    target_shape = [max_lidar_pt_num, *(obs_out['toplidar'].shape[1:])]
-    new_pts = np.zeros(target_shape, dtype=obs_out['toplidar'].dtype)
-    ind_limit = min(max_lidar_pt_num, lidar_pt_num)
-    new_pts[:ind_limit, ...] = obs_out['toplidar'][:ind_limit, ...]
-    obs_out['toplidar'] = new_pts
-    obs_out['lidar_pt_num'] = lidar_pt_num
-
 class SimpleCarlaEnv(BaseDriveEnv):
     """
     A simple deployment of Carla Environment with single hero vehicle. It use ``CarlaSimulator`` to interact with

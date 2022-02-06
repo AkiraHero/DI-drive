@@ -111,6 +111,22 @@ def main(args, seed=0):
         epsilon_greedy = get_epsilon_greedy_fn(eps_cfg.start, eps_cfg.end, eps_cfg.decay, eps_cfg.type)
         learner.set_epsilon_greedy(epsilon_greedy)
 
+
+    '''
+    Detector
+    '''
+    detection_model = None
+    obs_bev_config = None
+    detection_max_batch_size = None
+    if cfg.env.enable_detector:
+        logger.error("Detector enabled.")
+        detection_model = DetectionModelWrapper(cfg=cfg.env.detector)
+        obs_bev_config = [i for i in cfg.env.simulator.obs if i['name'] == 'birdview'][0]
+        detection_max_batch_size = cfg.env.detector.max_batch_size
+    else:
+        logger.error("Detector not enabled.")
+
+
     '''
     Env and Collector
     '''
@@ -126,6 +142,9 @@ def main(args, seed=0):
     collector_env = CarlaSyncSubprocessEnvManager(
         env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.collect, *tcp_list[i]) for i in range(collector_env_num)],
         cfg=cfg.env.manager.collect,
+        detector=detection_model,
+        detection_max_batch_size=detection_max_batch_size,
+        bev_obs_config=obs_bev_config,
     )
     collector_env.seed(seed)
     collector = SampleSerialCollector(cfg.policy.collect.collector,
@@ -145,6 +164,9 @@ def main(args, seed=0):
                 env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.eval, *tcp_list[collector_env_num + i]) for i in
                         range(evaluator_env_num)],
                 cfg=cfg.env.manager.eval,
+                detector=detection_model,
+                detection_max_batch_size=detection_max_batch_size,
+                bev_obs_config=obs_bev_config,
             )
             # Uncomment this to add save replay when evaluation
             # evaluate_env.enable_save_replay(cfg.env.replay_path)
@@ -160,17 +182,6 @@ def main(args, seed=0):
             logger.error(str(e))
             logger.error(traceback.format_tb(e.__traceback__))
 
-
-    '''
-    Detector
-    '''
-    if cfg.env.enable_detector:
-        logger.error("Detector enabled.")
-        detection_model = DetectionModelWrapper(cfg=cfg.env.detector)
-        obs_bev_config = [i for i in cfg.env.simulator.obs if i['name'] == 'birdview'][0]
-        learner.set_detection_model(detection_model, cfg.env.detector.max_batch_size, obs_bev_config)
-    else:
-        logger.error("Detector not enabled.")
 
     '''
     Replay buffer

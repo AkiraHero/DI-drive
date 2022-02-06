@@ -15,9 +15,7 @@ from ding.torch_utils import auto_checkpoint
 from core.utils.data_utils.bev_utils import unpack_birdview
 
 # other module
-from noisy_planning.detector.detection_model_wrapper import DetectionModelWrapper
 from tensorboardX import SummaryWriter
-from noisy_planning.detector.detection_utils import detection_process
 
 # debug
 from noisy_planning.utils.debug_utils import TestTimer
@@ -39,9 +37,6 @@ class CarlaLearner(BaseLearner):
         self._collector_config = None
         self._replay_buffer = None
         self._evaluator = None
-        self._detection_model = None
-        self._detection_batch_size = 16
-        self._bev_obs_config = None
         self._epsilon_greedy = None
         self._policy_name = None
 
@@ -50,11 +45,6 @@ class CarlaLearner(BaseLearner):
 
     def set_epsilon_greedy(self, eps_func):
         self._epsilon_greedy = eps_func
-
-    def set_detection_model(self, mdl, batch_size, obs_config):
-        self._detection_model = mdl
-        self._detection_batch_size = batch_size
-        self._bev_obs_config = obs_config
 
     def set_collector(self, collector, collector_config):
         self._collector_config = collector_config
@@ -78,33 +68,8 @@ class CarlaLearner(BaseLearner):
 
     def post_processing_data_collection(self, data_list):
         assert isinstance(data_list, list)
-
         # unpack_birdview
         unpack_birdview(data_list)
-
-        if self._detection_model is None:
-            return
-        # detection
-        assert isinstance(self._detection_model, DetectionModelWrapper)
-        max_batch_size = self._detection_batch_size
-
-        # get unique datalist
-        data_list_dict = {id(i['obs']): i['obs'] for i in data_list}
-        data_list_dict.update({id(i['next_obs']): i['next_obs'] for i in data_list})
-        obs_list = [i for i in data_list_dict.values()]
-
-        # get mini-batches
-        obs_list_size = len(obs_list)
-        pivots = [i for i in range(0, obs_list_size, max_batch_size)] + [obs_list_size]
-        seg_num = len(pivots) - 1
-        for i in range(seg_num):
-            self.logger.debug('[DET]processing minibatch-{}...'.format(i))
-            detection_process(obs_list[pivots[i]: pivots[i + 1]], self._detection_model, self._bev_obs_config)
-
-        # debug: check detection process
-        for i in data_list:
-            assert i['obs']['birdview_using_detection'] is True
-            assert i['next_obs']['birdview_using_detection'] is True
 
     @auto_checkpoint
     def start(self) -> None:

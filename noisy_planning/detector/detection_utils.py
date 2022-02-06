@@ -136,10 +136,10 @@ def detection_process(data_list, detector, env_bev_obs_cfg):
         walker_dim = detection_surface['det_walker_surface']
         vehicle_dim[vehicle_dim > 0] = 1
         walker_dim[walker_dim > 0] = 1
-        device_here = i['birdview'].device
-        dtype_here = i['birdview'].dtype
-        vehicle_dim = torch.Tensor(vehicle_dim, device=device_here).to(dtype_here)
-        walker_dim = torch.Tensor(walker_dim, device=device_here).to(dtype_here)
+        # device_here = i['birdview'].device
+        # dtype_here = i['birdview'].dtype
+        # vehicle_dim = torch.Tensor(vehicle_dim, device=device_here).to(dtype_here)
+        # walker_dim = torch.Tensor(walker_dim, device=device_here).to(dtype_here)
         i['birdview'][:, :, 2] = vehicle_dim
         i['birdview'][:, :, 3] = walker_dim
-        i['birdview_using_detection'] = True
+        i['detected'] = True

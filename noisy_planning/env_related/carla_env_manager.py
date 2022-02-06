@@ -2,6 +2,7 @@ from typing import Any, List, Dict, Callable
 from easydict import EasyDict
 
 import traceback
+import logging
 from collections import namedtuple
 
 from ding.envs import SyncSubprocessEnvManager
@@ -12,6 +13,8 @@ from ding.utils import PropagatingThread
 from ding.envs.env.base_env import BaseEnvTimestep
 
 from noisy_planning.utils.debug_utils import generate_general_logger
+from noisy_planning.detector.detection_model_wrapper import DetectionModelWrapper
+from noisy_planning.detector.detection_utils import detection_process
 
 '''
 compatable with Ding v0.2.1
@@ -24,10 +27,18 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             self,
             env_fn: List[Callable],
             cfg: EasyDict = EasyDict({}),
+            detector = None,
+            detection_max_batch_size = None,
+            bev_obs_config = None,
     ) -> None:
         super(CarlaSyncSubprocessEnvManager, self).__init__(env_fn, cfg)
         self._env_reset_try_num = {}
         self.logger = generate_general_logger("[Manager]")
+        self.logger.setLevel(logging.INFO)
+
+        self._detection_model = detector
+        self._detection_batch_size = detection_max_batch_size
+        self._bev_obs_config = bev_obs_config
 
     def _check_data(self, data: Dict, close: bool = False) -> None:
         exceptions = []
@@ -237,3 +248,64 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 self.logger.error("Ready to close for unonymous exception...")
                 self.close()
                 raise e
+
+    def insert_detection_result(self, data_list):
+        if self._detection_model is None:
+            return
+        # detection
+        assert isinstance(self._detection_model, DetectionModelWrapper)
+        max_batch_size = self._detection_batch_size
+
+        # get unique datalist
+        obs_list = data_list
+
+        # get mini-batches
+        obs_list_size = len(obs_list)
+        pivots = [i for i in range(0, obs_list_size, max_batch_size)] + [obs_list_size]
+        seg_num = len(pivots) - 1
+        for i in range(seg_num):
+            self.logger.debug('[DET]processing minibatch-{}...'.format(i))
+            detection_process(obs_list[pivots[i]: pivots[i + 1]], self._detection_model, self._bev_obs_config)
+
+
+
+
+    '''
+    Note: error in property is dangerous, which may lead to another undesired property seeking. Be careful.
+    ''' 
+    @property
+    def ready_obs(self) -> Dict[int, Any]:
+        """
+        Overview:
+            Get the next observations.
+        Return:
+            A dictionary with observations and their environment IDs.
+        Note:
+            The observations are returned in np.ndarray.
+        Example:
+            >>>     obs_dict = env_manager.ready_obs
+            >>>     actions_dict = {env_id: model.forward(obs) for env_id, obs in obs_dict.items())}
+        """
+        no_done_env_idx = [i for i, s in self._env_states.items() if s != EnvState.DONE]
+        sleep_count = 0
+        while not any([self._env_states[i] == EnvState.RUN for i in no_done_env_idx]):
+            if sleep_count % 1000 == 0:
+                self.logger.warning(
+                    'VEC_ENV_MANAGER: all the not done envs are resetting, sleep {} times'.format(sleep_count)
+                )
+            time.sleep(0.001)
+            sleep_count += 1
+        res_dict = {i: self._ready_obs[i] for i in self.ready_env}
+        if self._detection_model is not None:
+            data_list = []
+            for v in res_dict.values():
+                if 'detected' not in v.keys() or i['detected'] == False:
+                    data_list.append(v)
+            if len(data_list):
+                self.insert_detection_result(data_list)
+
+            # check detection process stamp
+            for k, v in res_dict.items():
+                if not v['detected']:
+                    raise TypeError("Detection needed...")
+        return res_dict
