@@ -103,7 +103,7 @@ def check_obs_id(data_list):
     print("next_ids:", next_ids)
 
 
-def detection_process(data_list, detector, env_bev_obs_cfg):
+def detection_process(data_list, detector, env_bev_obs_cfg, keep_ini=False):
     # 1. extract batch
     batch_points = []
     for i in data_list:
@@ -140,6 +140,10 @@ def detection_process(data_list, detector, env_bev_obs_cfg):
         # dtype_here = i['birdview'].dtype
         # vehicle_dim = torch.Tensor(vehicle_dim, device=device_here).to(dtype_here)
         # walker_dim = torch.Tensor(walker_dim, device=device_here).to(dtype_here)
+        if keep_ini:
+            i['ini_vehicle_dim'] = i['birdview'][:, :, 2]
+            i['ini_walker_dim'] = i['birdview'][:, :, 3]
+
         i['birdview'][:, :, 2] = vehicle_dim
         i['birdview'][:, :, 3] = walker_dim
         i['detected'] = 1.0 # avoid batch collate error, use float

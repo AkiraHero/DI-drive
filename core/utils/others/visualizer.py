@@ -19,20 +19,34 @@ class Visualizer(object):
 
     :Interfaces: init, paint, run_visualize, done
     """
-    _name = None
-    _canvas = None
-    _gif_maker = None
-    _video_maker = None
-    config = dict(
-        show_text=True,
-        outputs=list(),
-        save_dir='',
-        frame_skip=0,
-    )
+    # _name = None
+    # _canvas = None
+    # _gif_maker = None
+    # _video_maker = None
+    # config = dict(
+    #     show_text=True,
+    #     outputs=list(),
+    #     save_dir='',
+    #     frame_skip=0,
+    # )
 
     def __init__(self, cfg: Dict) -> None:
+
+        self._name = None
+        self._canvas = None
+        self._gif_maker = None
+        self._video_maker = None
+        self.config = dict(
+            show_text=True,
+            outputs=list(),
+            save_dir='',
+            frame_skip=0,
+        )
+
+
+
         if 'cfg_type' not in cfg:
-            self._cfg = self.__class__.default_config()
+            self._cfg = EasyDict(self.config)
             self._cfg = deep_merge_dicts(self._cfg, cfg)
         else:
             self._cfg = cfg
@@ -194,11 +208,13 @@ class Visualizer(object):
     def canvas(self):
         return self._canvas
 
-    @classmethod
-    def default_config(cls: type) -> EasyDict:
-        cfg = EasyDict(cls.config)
-        cfg.cfg_type = cls.__name__ + 'Config'
-        return copy.deepcopy(cfg)
+    # @classmethod
+    # def default_config(cls: type) -> EasyDict:
+    #     cfg = EasyDict(cls.config)
+    #     cfg.cfg_type = cls.__name__ + 'Config'
+    #     return copy.deepcopy(cfg)
+
+
 
 
 def resize_birdview(img, rate):

@@ -127,8 +127,8 @@ class DriveEnvWrapper(gym.Wrapper):
     def __repr__(self) -> str:
         return repr(self.env)
 
-    def render(self):
-        self.env.render()
+    def render(self, *args, **kwargs):
+        self.env.render(*args, **kwargs)
 
 
 class BenchmarkEnvWrapper(DriveEnvWrapper):
