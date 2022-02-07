@@ -114,7 +114,13 @@ dqn_config = dict(
             learner=dict(
                 hook=dict(
                     # Pre-train model path
-                    load_ckpt_before_run='',
+                    load_ckpt_before_run=dict(
+                        type='load_ckpt_without_iter',
+                        name='load_ckpt_without_iter',
+                        priority=20,
+                        position='before_run',
+                        ext_args=dict(load_path='')
+                    ),
                     log_show_after_iter=1000,
                     save_ckpt_after_iter=1000,
                 ),

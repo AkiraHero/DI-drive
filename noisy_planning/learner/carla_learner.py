@@ -10,6 +10,8 @@ from typing import Optional, Tuple
 # ding
 from ding.worker import BaseLearner
 from ding.torch_utils import auto_checkpoint
+from ding.worker.learner.learner_hook import LearnerHook, register_learner_hook
+from ding.utils.file_helper import read_file
 
 # utils
 from core.utils.data_utils.bev_utils import unpack_birdview
@@ -17,9 +19,48 @@ from core.utils.data_utils.bev_utils import unpack_birdview
 # other module
 from tensorboardX import SummaryWriter
 
-# debug
 from noisy_planning.utils.debug_utils import TestTimer
 timer = TestTimer()
+
+
+class LoadCkptHookWithoutIter(LearnerHook):
+    """
+    Overview:
+        Hook to load checkpoint
+    Interfaces:
+        __init__, __call__
+    Property:
+        name, priority, position
+    """
+
+    def __init__(self, *args, ext_args: EasyDict = EasyDict(), **kwargs) -> None:
+        """
+        Overview:
+            Init LoadCkptHook.
+        Arguments:
+            - ext_args (:obj:`EasyDict`): Extended arguments. Use ``ext_args.freq`` to set ``load_ckpt_freq``.
+        """
+        super().__init__(*args, **kwargs)
+        self._load_path = ext_args['load_path']
+
+    def __call__(self, engine: 'BaseLearner') -> None:  # noqa
+        """
+        Overview:
+            Load checkpoint to learner. Checkpoint info includes policy state_dict and iter num.
+        Arguments:
+            - engine (:obj:`BaseLearner`): The BaseLearner to load checkpoint to.
+        """
+        path = self._load_path
+        if path == '':  # not load
+            return
+        state_dict = read_file(path)
+        if 'last_iter' in state_dict:
+            last_iter = state_dict.pop('last_iter')
+            engine.info("last iter={}, but we would not load it for replay buffer logic.".format(str(last_iter)))
+            # engine.last_iter.update(last_iter)
+        engine.policy.load_state_dict(state_dict)
+        engine.info('{} load ckpt in {}'.format(engine.instance_name, path))
+
 
 class CarlaLearner(BaseLearner):
     def __init__(self,
@@ -39,6 +80,7 @@ class CarlaLearner(BaseLearner):
         self._evaluator = None
         self._epsilon_greedy = None
         self._policy_name = None
+        register_learner_hook("load_ckpt_without_iter", LoadCkptHookWithoutIter)
 
     def set_policy_name(self, n):
         self._policy_name = n
