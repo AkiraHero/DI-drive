@@ -14,7 +14,8 @@ from ding.policy import DQNPolicy, PPOPolicy, TD3Policy, SACPolicy, DDPGPolicy
 from ding.utils import set_pkg_seed
 
 # rl model
-from demo.simple_rl.model import DQNRLModel, PPORLModel, TD3RLModel, SACRLModel, DDPGRLModel
+from demo.simple_rl.model import DQNRLModel
+from noisy_planning.rl_model import TD3RLModel
 from demo.simple_rl.env_wrapper import DiscreteEnvWrapper, ContinuousEnvWrapper
 
 # other module

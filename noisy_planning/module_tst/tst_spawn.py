@@ -134,8 +134,8 @@ def _spawn_pedestrians(client, n_pedestrians, tm=None) -> None:
     blueprints = _blueprints.filter('walker.pedestrian.*')
     SpawnActor = carla.command.SpawnActor
 
-    pedestrians_running = 30.0  # how many pedestrians will run
-    pedestrians_crossing = 80.0
+    pedestrians_running = 0.5  # how many pedestrians will run
+    pedestrians_crossing = 0.8
 
     peds_spawned = 0
     walkers = []

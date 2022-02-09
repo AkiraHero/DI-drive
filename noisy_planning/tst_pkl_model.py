@@ -1,6 +1,9 @@
 import torch
 from torch import nn
 from torchvision.models.resnet import resnet18
+import torch
+import torch.nn as nn
+from typing import List, Tuple, Union, Dict, Optional
 
 
 def gen_up(inchannels, outchannels, scale):
@@ -81,4 +84,8 @@ if __name__ == '__main__':
     model = CNN(5, 16, True, 0.0)
     pp = torch.rand([1, 5, 256, 256])
     tt = model(pp)
+
+    obs_shape = [5, 160, 160]
+    encoder_hidden_size_list = [32, 64, 128]
+    model2 = BEVSpeedConvEncoder(obs_shape, encoder_hidden_size_list,  512,  [3, 3, 3], [2, 2, 2])
     pass

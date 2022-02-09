@@ -3,6 +3,7 @@ from easydict import EasyDict
 
 import traceback
 import logging
+import time
 from collections import namedtuple
 
 from ding.envs import SyncSubprocessEnvManager
@@ -153,7 +154,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             for i, (env_id, timestep) in enumerate(timesteps.items()):
                 timesteps[env_id] = timestep._replace(obs=self._obs_buffers[env_id].get())
 
-        # perform detection
+        ############################## perform detection ##############################
         if self._detection_model is not None:
             data_list = []
             for ts in timesteps.values():
@@ -163,6 +164,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                         data_list.append(v)
             if len(data_list):
                 self.insert_detection_result(data_list)
+        ############################## perform detection ##############################
 
 
         for env_id, timestep in timesteps.items():
@@ -304,6 +306,8 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             time.sleep(0.001)
             sleep_count += 1
         res_dict = {i: self._ready_obs[i] for i in self.ready_env}
+
+        ############################## perform detection ##############################
         if self._detection_model is not None:
             data_list = []
             for v in res_dict.values():
@@ -316,4 +320,5 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             for k, v in res_dict.items():
                 if not v['detected']:
                     raise TypeError("Detection needed...")
+        ############################## perform detection ##############################
         return res_dict
