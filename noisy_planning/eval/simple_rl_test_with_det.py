@@ -1,3 +1,4 @@
+import os
 import sys
 sys.path.append("/home/xlju/carla-0.9.11-py3.7-linux-x86_64.egg")
 
@@ -21,7 +22,9 @@ from noisy_planning.detector.detection_model_wrapper import DetectionModelWrappe
 from noisy_planning.eval.single_carla_evaluator_with_det import SingleCarlaEvaluatorWithDet
 from noisy_planning.eval.simple_carla_env_new_render import SimpleCarlaEnvNewRender
 
-eval_config = dict(
+from easydict import EasyDict
+
+eval_config = EasyDict(dict(
     env=dict(
         simulator=dict(
             town='Town01',
@@ -77,7 +80,8 @@ eval_config = dict(
         ignore_light=True,
         visualize=dict(
             type='birdview',
-            outputs=['show']
+            save_dir="eval_out_det2",
+            outputs=['show', 'gif'],
         ),
         wrapper=dict(
             suite='FullTown02-v1',
@@ -102,7 +106,7 @@ eval_config = dict(
         carla_ports=[9000, 9002, 2]
     )],
 )
-
+)
 
 main_config = EasyDict(eval_config)
 
@@ -120,9 +124,11 @@ def get_cls(spec):
 
 
 def main(args, seed=0):
-    args.ckpt_path = "/home/xlju/Project/Model_behavior/training_log/simple-rl_2022-02-05-09-44-39/ckpt/iteration_14000.pth.tar"
+    # args.ckpt_path = "/home/xlju/Project/Model_behavior/training_log/simple-rl_2022-02-05-09-44-39/ckpt/iteration_14000.pth.tar"
     # args.ckpt_path = "/home/xlju/Project/Model_behavior/DI-drive/noisy_planning/tst.pkl"
+    args.ckpt_path = "/home/xlju/iteration_3000.pth.tar"
     cfg = main_config
+    eval_epchs = 50
     enable_detection = cfg.env.enable_detector
 
     policy_cls, model_cls = get_cls(args.policy)
@@ -160,7 +166,13 @@ def main(args, seed=0):
     evaluator = SingleCarlaEvaluatorWithDet(cfg.policy.eval.evaluator, carla_env, policy.eval_mode,
                                             detector=detection_model,
                                             bev_obs_config=obs_bev_config)
-    evaluator.eval()
+
+    use_det_policy = True
+    for i in range(eval_epchs):
+        res = evaluator.eval(reset_param=dict(name="eval_episode-{}".format(i), use_det_policy=use_det_policy))
+        file_name = os.path.join(cfg.env.visualize.save_dir, "eval-{}-use_det_policy-{}.txt".format(i, use_det_policy))
+        with open(file_name, 'w') as f:
+            f.write(str(res))
     evaluator.close()
 
 

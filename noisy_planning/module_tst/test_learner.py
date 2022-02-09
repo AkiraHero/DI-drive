@@ -8,7 +8,7 @@ from ding.policy import DQNPolicy, PPOPolicy, TD3Policy, SACPolicy, DDPGPolicy
 from ding.worker import BaseLearner, SampleSerialCollector, AdvancedReplayBuffer
 
 # rl model
-from demo.simple_rl.model import DQNRLModel, PPORLModel, TD3RLModel, SACRLModel, DDPGRLModel
+from demo.simple_rl.model import DQNRLModelNew, PPORLModel, TD3RLModel, SACRLModel, DDPGRLModel
 
 # utils
 from core.utils.others.ding_utils import compile_config
@@ -50,7 +50,7 @@ def get_cfg(args):
 
 def get_cls(spec):
     policy_cls, model_cls = {
-        'dqn': (DQNPolicy, DQNRLModel),
+        'dqn': (DQNPolicy, DQNRLModelNew),
         'ddpg': (DDPGPolicy, DDPGRLModel),
         'td3': (TD3Policy, TD3RLModel),
         'ppo': (PPOPolicy, PPORLModel),

@@ -1,3 +1,4 @@
+import copy
 import os
 import torch
 import numpy as np
@@ -78,6 +79,9 @@ class SingleCarlaEvaluatorWithDet(BaseEvaluator):
         self._policy.reset([0])
         eval_reward = 0
         success = False
+        use_det_policy = None
+        if "use_det_policy" in reset_param.keys():
+            use_det_policy = reset_param["use_det_policy"]
         if reset_param is not None:
             obs = self._env.reset(**reset_param)
         else:
@@ -86,18 +90,24 @@ class SingleCarlaEvaluatorWithDet(BaseEvaluator):
         with self._timer:
             while True:
                 # insert detection
+                obs_using_detection = None
                 if self._detection_model is not None:
-                    data_list = [obs]
+                    obs_using_detection = copy.deepcopy(obs)
+                    data_list = [obs_using_detection]
                     if len(data_list):
                         self.insert_detection_result(data_list)
 
                 if self._render:
-                    self._env.render(obs_with_det=obs)
+                    self._env.render(obs_with_det=obs_using_detection)
 
                 if self._transform_obs:
                     obs = to_tensor(obs, dtype=torch.float32)
-
-                actions = self._policy.forward({0: obs})
+                    if obs_using_detection:
+                        obs_using_detection = to_tensor(obs_using_detection, dtype=torch.float32)
+                if use_det_policy:
+                    actions = self._policy.forward({0: obs})
+                else:
+                    actions = self._policy.forward({0: obs_using_detection})
                 action = actions[0]['action']
                 timestep = self._env.step(action)
                 obs = timestep.obs
@@ -124,7 +134,7 @@ class SingleCarlaEvaluatorWithDet(BaseEvaluator):
             )
         )
         print("[EVALUATOR] Evaluate done!")
-        return success
+        return info
 
 
     def insert_detection_result(self, data_list):

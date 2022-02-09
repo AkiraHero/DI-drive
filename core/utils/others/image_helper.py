@@ -120,8 +120,8 @@ class GifMaker(object):
     def clear(cls, key=None):
         if key in cls.images:
             cls.images.pop(key)
-        else:
-            cls.images.clear()
+        # else:
+        #     cls.images.clear()
 
 
 def draw_msra_gaussian(heatmap, center, sigma):

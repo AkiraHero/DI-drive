@@ -8,6 +8,7 @@ from core.utils.others.visualizer import Visualizer
 from core.utils.simulator_utils.carla_utils import visualize_birdview
 import time
 
+
 # todo: should use decorator as wrapper... I am lazy..
 
 class SimpleCarlaEnvNewRender(SimpleCarlaEnv):
@@ -36,13 +37,15 @@ class SimpleCarlaEnvNewRender(SimpleCarlaEnv):
                 self._visualizer.done()
             else:
                 self._visualizer = Visualizer(self._visualize_cfg)
-
+            extra_str = ''
+            if 'use_det_policy' in kwargs.keys() and kwargs['use_det_policy'] is True:
+                extra_str = '_use_det_policy'
+            timestamp_str = "{}_{}".format(
+                self._simulator.town_name, time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime()))
             if 'name' in kwargs:
-                vis_name = kwargs['name']
+                vis_name = kwargs['name'] + "-" + timestamp_str + extra_str
             else:
-                vis_name = "{}_{}".format(
-                    self._simulator.town_name, time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
-                )
+                vis_name = timestamp_str + extra_str
 
             self._visualizer.init(vis_name)
             ############ dual
@@ -52,15 +55,13 @@ class SimpleCarlaEnvNewRender(SimpleCarlaEnv):
                 self._visualizer_dual = Visualizer(self._visualize_cfg)
 
             if 'name' in kwargs:
-                vis_name = kwargs['name']
+                vis_name = kwargs['name'] + "-" + timestamp_str + extra_str
             else:
-                vis_name = "{}_{}".format(
-                    self._simulator.town_name, time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
-                )
+                vis_name = timestamp_str + extra_str
+
             vis_name = vis_name + "_dual"
             self._visualizer_dual.init(vis_name)
             ###############
-
 
         if 'col_is_failure' in kwargs:
             self._col_is_failure = kwargs['col_is_failure']
@@ -81,7 +82,6 @@ class SimpleCarlaEnvNewRender(SimpleCarlaEnv):
         self._timeout = self._simulator.end_timeout
 
         return self.get_observations()
-
 
     def step(self, action: Dict) -> Tuple[Any, float, bool, Dict]:
         res = super().step(action)
