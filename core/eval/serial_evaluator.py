@@ -46,7 +46,7 @@ class SerialEvaluator(BaseEvaluator):
         # stop value of success rate
         stop_rate=1,
         # max steps to evaluate to avoid too long sequences
-        env_max_steps = 128,
+        env_max_steps = 400,
     )
 
     def __init__(

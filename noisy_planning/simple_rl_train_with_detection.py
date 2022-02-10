@@ -2,6 +2,9 @@
 import argparse
 from functools import partial
 import traceback
+import os
+import yaml
+from easydict import EasyDict
 
 # ding
 from ding.envs import BaseEnvManager
@@ -67,6 +70,16 @@ def get_cfg(args):
     )
     return cfg
 
+def edict2dict(edict_obj):
+    if isinstance(edict_obj, list) or isinstance(edict_obj, tuple):
+        return [edict2dict(i) for i in edict_obj]
+    if isinstance(edict_obj, dict) or isinstance(edict_obj, EasyDict):
+        dict_obj = {}
+        for key, vals in edict_obj.items():
+            dict_obj[key] = edict2dict(vals)
+        return dict_obj
+    return edict_obj
+
 
 def get_cls(spec):
     policy_cls, model_cls = {
@@ -87,7 +100,7 @@ def main(args, seed=0):
     '''
     Config
     '''
-    enable_eval = False
+    enable_eval = True
     cfg = get_cfg(args)
     tcp_list = parse_carla_tcp(cfg.server)
     collector_env_num, evaluator_env_num = cfg.env.collector_env_num, cfg.env.evaluator_env_num
@@ -95,6 +108,12 @@ def main(args, seed=0):
         "Carla server not enough! Need {} servers but only found {}.".format(
             collector_env_num + evaluator_env_num, len(tcp_list)
         )
+    # move config cfg to folder
+    if not os.path.exists(cfg.exp_name):
+        os.makedirs(cfg.exp_name)
+    config_file = os.path.join(cfg.exp_name, "config.yaml")
+    with open(config_file, "w") as f:
+        yaml.dump(edict2dict(cfg), f)
 
     '''
     Policy
@@ -106,13 +125,14 @@ def main(args, seed=0):
     '''
     Learner and tensorboard
     '''
-    tb_logger = SummaryWriter('./log/{}/'.format(cfg.exp_name))
-    learner = CarlaLearner(cfg.policy.learn, policy.learn_mode, tb_logger, exp_name=cfg.exp_name)
+    # tb_logger = SummaryWriter('./log/{}/'.format(cfg.exp_name))
+    learner = CarlaLearner(cfg.policy.learn, policy.learn_mode, exp_name=cfg.exp_name)
     learner.set_policy_name(args.policy)
     if args.policy == 'dqn':
         eps_cfg = cfg.policy.other.eps
         epsilon_greedy = get_epsilon_greedy_fn(eps_cfg.start, eps_cfg.end, eps_cfg.decay, eps_cfg.type)
         learner.set_epsilon_greedy(epsilon_greedy)
+    tb_logger = learner.get_tb_logger()
 
 
     '''
@@ -216,7 +236,7 @@ def main(args, seed=0):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='simple-rl train')
     parser.add_argument('-n', '--name', type=str, default='simple-rl', help='experiment name')
-    parser.add_argument('-p', '--policy', default='dqn', choices=['dqn', 'ppo', 'td3', 'sac', 'ddpg'], help='RL policy')
+    parser.add_argument('-p', '--policy', default='td3', choices=['dqn', 'ppo', 'td3', 'sac', 'ddpg'], help='RL policy')
     parser.add_argument('-d', '--ding-cfg', default=None, help='DI-engine config path')
 
     args = parser.parse_args()

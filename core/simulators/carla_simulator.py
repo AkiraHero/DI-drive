@@ -745,7 +745,7 @@ class CarlaSimulator(BaseSimulator):
                     else:
                         break
             if cur_loop_fail_flag:
-                self.logger.warning("[SIMULATOR] fail to clean all actors.")
+                self.logger.debug("[SIMULATOR] fail to clean all actors.")
             not_success = cur_loop_fail_flag
             try_destroy_cnt += 1
 

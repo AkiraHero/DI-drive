@@ -1,9 +1,9 @@
 from easydict import EasyDict
 
-sac_config = dict(
+td3_config = dict(
     exp_name='td32_bev32_buf4e5_lr1e4_bs128_ns3000_update4_train_ft',
     env=dict(
-        collector_env_num=1,
+        collector_env_num=15,
         evaluator_env_num=1,
         simulator=dict(
             town='Town01',
@@ -42,8 +42,8 @@ sac_config = dict(
         detector=dict(
             model_repo="openpcdet",
             model_name="pointpillar",
-            #ckpt="/cpfs2/user/juxiaoliang/checkpoint_epoch_160.pth",
-            ckpt="/home/xlju/Downloads/pointpillar/pointpillar/ckpt/checkpoint_epoch_160.pth",
+            ckpt="/cpfs2/user/juxiaoliang/checkpoint_epoch_160.pth",
+            #ckpt="/home/xlju/Downloads/pointpillar/pointpillar/ckpt/checkpoint_epoch_160.pth",
             max_batch_size=32,
             data_config=dict(
                 class_names=['Car', 'Pedestrian'],
@@ -113,6 +113,7 @@ sac_config = dict(
                 hook=dict(
                     load_ckpt_before_run='',
                     log_show_after_iter=1000,
+                    save_ckpt_after_iter=3000,
                 ),
             ),
         ),
@@ -128,9 +129,9 @@ sac_config = dict(
         ),
         eval=dict(
             evaluator=dict(
-                eval_freq=5000,
+                eval_freq=3000,
                 n_episode=5,
-                stop_rate=0.9,
+                stop_rate=2.0, # do not stop by eval
                 transform_obs=True,
             ),
         ),
@@ -151,4 +152,4 @@ sac_config = dict(
     ),
 )
 
-default_train_config = EasyDict(sac_config)
+default_train_config = EasyDict(td3_config)

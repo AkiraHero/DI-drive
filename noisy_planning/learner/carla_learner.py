@@ -71,9 +71,8 @@ class CarlaLearner(BaseLearner):
                  exp_name: Optional[str] = 'default_experiment',
                  instance_name: Optional[str] = 'learner',
                  ):
-        exp_name_with_time = exp_name + '_' + time.strftime("%Y-%m-%d-%H-%M-%S")
         register_learner_hook("load_ckpt_without_iter", LoadCkptHookWithoutIter)
-        super(CarlaLearner, self).__init__(cfg.learner, policy, tb_logger, dist_info, exp_name_with_time, instance_name)
+        super(CarlaLearner, self).__init__(cfg.learner, policy, tb_logger, dist_info, exp_name, instance_name)
         self._batch_size = cfg.batch_size
         self._collector = None
         self._collector_config = None
@@ -103,6 +102,9 @@ class CarlaLearner(BaseLearner):
         assert self._collector_config is not None
         assert self._replay_buffer is not None
         assert self._policy_name is not None
+
+    def get_tb_logger(self):
+        return self._tb_logger
 
     @staticmethod
     def check_batch_data(data_list):
