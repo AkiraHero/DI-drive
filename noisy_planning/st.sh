@@ -5,7 +5,7 @@ then
       echo "You did not designate a experiment tag, using [default]"
 else
       echo "Your experiment tag is $1"
-      experiment_tag = "$1"
+      experiment_tag="$1"
 fi
 
 
