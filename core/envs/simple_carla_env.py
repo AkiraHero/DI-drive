@@ -11,7 +11,7 @@ from core.simulators import CarlaSimulator
 from core.utils.others.visualizer import Visualizer
 from core.utils.simulator_utils.carla_utils import visualize_birdview
 from core.utils.env_utils.stuck_detector import StuckDetector
-from core.utils.simulator_utils.carla_utils import lane_mid_distance
+from core.utils.simulator_utils.carla_utils import lane_mid_distance, get_lane_dis
 
 import traceback
 
@@ -62,6 +62,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         max_speed=5,
         # whether open visualize
         visualize=None,
+        reward_func="ini_compute_reward",
     )
 
     def __init__(
@@ -130,7 +131,8 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._simulator_databuffer = dict()
         self._visualizer = None
         self._last_canvas = None
-
+        self.logger.warning("Using reward function: {}".format(self._cfg.reward_func))
+        self._reward_func = self.__getattribute__(self._cfg.reward_func)
         # self.weird_bug = False
 
     def _init_carla_simulator(self) -> None:
@@ -249,8 +251,8 @@ class SimpleCarlaEnv(BaseDriveEnv):
         location = self._simulator_databuffer['state']['location'][:2]
         target = self._simulator_databuffer['navigation']['target']
         self._off_route = np.linalg.norm(location - target) >= self._off_route_distance
+        self._reward, reward_info = self._reward_func()
 
-        self._reward, reward_info = self.compute_reward()
         info = self._simulator.get_information()
         info.update(reward_info)
         info.update(
@@ -390,7 +392,58 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 self._render_buffer = visualize_birdview(self._render_buffer)
         return obs
 
-    def compute_reward(self) -> Tuple[float, Dict]:
+    # https://github.com/cjy1992/gym-carla/blob/master/gym_carla/envs/carla_env.py
+    def compute_reward_cheat(self):
+        out_lane_thres = 2.0
+        desired_speed = 8.0
+
+        """Calculate the step reward."""
+        # reward for speed tracking
+        v = self.hero_player.get_velocity()
+        # speed = np.sqrt(v.x ** 2 + v.y ** 2)
+        # r_speed = -abs(speed - desired_speed)
+
+        # reward for collision
+        r_collision = 0
+        if self._collided:
+            r_collision = -1
+
+        # reward for steering:
+        r_steer = -self.hero_player.get_control().steer ** 2
+
+        # reward for out of lane
+        location = self._simulator_databuffer['state']['location']
+        ego_x, ego_y = location[0], location[1]
+        waypoint_list = self._simulator_databuffer['navigation']['waypoint_list']
+        dis, w = get_lane_dis(waypoint_list, ego_x, ego_y)
+        r_out = 0
+        if abs(dis) > out_lane_thres:
+            r_out = -1
+
+        # longitudinal speed
+        lspeed = np.array([v.x, v.y])
+        lspeed_lon = np.dot(lspeed, w)
+
+        # cost for too fast
+        r_fast = 0
+        if lspeed_lon > desired_speed:
+            r_fast = -1
+
+        # cost for lateral acceleration
+        r_lat = - abs(self.hero_player.get_control().steer) * lspeed_lon ** 2
+        reward_info = {}
+        reward_info['collision_reward'] = 200 * r_collision
+        reward_info['speed_reward_longitude'] = 1 * lspeed_lon
+        reward_info['speed_reward_fast'] = 10 * r_fast
+        reward_info['lane_reward'] = 1 * r_out
+        reward_info['steer_reward'] = r_steer * 5
+        reward_info['lateral_acc_reward'] = 0.2 * r_lat - 0.1
+        total_reward = 0
+        for k, v in reward_info:
+            total_reward += v
+        return total_reward, reward_info
+
+    def ini_compute_reward(self) -> Tuple[float, Dict]:
         """
         Compute reward for current frame, with details returned in a dict. In short, in contains goal reward,
         route following reward calculated by route length in current and last frame, some navigation attitude reward

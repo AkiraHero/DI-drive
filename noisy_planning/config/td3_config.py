@@ -5,6 +5,7 @@ td3_config = dict(
     env=dict(
         collector_env_num=15,
         evaluator_env_num=1,
+        reward_func="compute_reward_cheat",
         simulator=dict(
             town='Town01',
             delta_seconds=0.05,

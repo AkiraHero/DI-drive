@@ -129,3 +129,26 @@ def lane_mid_distance(waypoint_location_list, location):
     loc = location[None, :2]
     dis = np.min(np.abs(np.sum(normal_vec * (loc - start), axis=1)) / np.sqrt(np.sum(normal_vec * normal_vec, axis=1)))
     return dis
+
+
+def get_lane_dis(waypoints, x, y):
+  """
+  Calculate distance from (x, y) to waypoints.
+  :param waypoints: a list of list storing waypoints like [[x0, y0], [x1, y1], ...]
+  :param x: x position of vehicle
+  :param y: y position of vehicle
+  :return: a tuple of the distance and the closest waypoint orientation
+  """
+  dis_min = 1000
+  waypt = waypoints[0]
+  for pt in waypoints:
+    d = np.sqrt((x-pt[0])**2 + (y-pt[1])**2)
+    if d < dis_min:
+      dis_min = d
+      waypt=pt
+  vec = np.array([x - waypt[0], y - waypt[1]])
+  lv = np.linalg.norm(np.array(vec))
+  w = np.array([np.cos(waypt[2]/180*np.pi), np.sin(waypt[2]/180*np.pi)])
+  cross = np.cross(w, vec/lv)
+  dis = - lv * cross
+  return dis, w
