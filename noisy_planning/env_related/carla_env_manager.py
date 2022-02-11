@@ -54,7 +54,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             self.logger.error("There are {} env return exception in data..".format(len(exceptions)))
             self.logger.error("The exceptions are:")
             for env_id, ex_ in zip(abnormal_env_ids, exceptions):
-                self.logger.error("env_id={} give exceptions as :{}".format(env_id, str(ex)))
+                self.logger.error("env_id={} give exceptions as :{}".format(env_id, str(ex_)))
 
             if not close:
                 self.logger.error("We will not close the abnormal envs...")
