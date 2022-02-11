@@ -213,7 +213,7 @@ class DQNRLModel(nn.Module):
             self,
             obs_shape: Tuple = [5, 32, 32],
             action_shape: Union[int, Tuple] = 21,
-            encoder_hidden_size_list: Tuple = [64, 128, 256],
+            encoder_hidden_size_list: Tuple = [32, 64, 128],
             dueling: bool = True,
             head_hidden_size: Optional[int] = 512,
             head_layer_num: int = 1,
