@@ -439,7 +439,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         reward_info['steer_reward'] = r_steer * 5
         reward_info['lateral_acc_reward'] = 0.2 * r_lat - 0.1
         total_reward = 0
-        for k, v in reward_info:
+        for k, v in reward_info.items():
             total_reward += v
         return total_reward, reward_info
 
