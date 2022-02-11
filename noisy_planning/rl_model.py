@@ -205,3 +205,43 @@ class TD3RLModel(DDPGRLModel):
             twin_critic, actor_head_hidden_size, actor_head_layer_num, critic_head_hidden_size,
             critic_head_layer_num, activation, norm_type)
         assert twin_critic
+
+
+class DQNRLModel(nn.Module):
+
+    def __init__(
+            self,
+            obs_shape: Tuple = [5, 32, 32],
+            action_shape: Union[int, Tuple] = 21,
+            encoder_hidden_size_list: Tuple = [64, 128, 256],
+            dueling: bool = True,
+            head_hidden_size: Optional[int] = 512,
+            head_layer_num: int = 1,
+            activation: Optional[nn.Module] = nn.ReLU(),
+            norm_type: Optional[str] = None
+    ) -> None:
+        super().__init__()
+        self._encoder = BEVSpeedConvEncoder(obs_shape, encoder_hidden_size_list, head_hidden_size, [3, 3, 3], [2, 2, 2])
+        if dueling:
+            head_cls = DuelingHead
+        else:
+            head_cls = DiscreteHead
+        multi_head = not isinstance(action_shape, int)
+        if multi_head:
+            self._head = MultiHead(
+                head_cls,
+                head_hidden_size,
+                action_shape,
+                layer_num=head_layer_num,
+                activation=activation,
+                norm_type=norm_type
+            )
+        else:
+            self._head = head_cls(
+                head_hidden_size, action_shape, head_layer_num, activation=activation, norm_type=norm_type
+            )
+
+    def forward(self, obs):
+        x = self._encoder(obs)
+        y = self._head(x)
+        return y

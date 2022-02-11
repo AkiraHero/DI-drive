@@ -16,8 +16,8 @@ from ding.rl_utils import get_epsilon_greedy_fn
 
 # rl model
 # dqn will use model from initial repo
-from demo.simple_rl.model import DQNRLModel
-from rl_model import TD3RLModel
+# from demo.simple_rl.model import DQNRLModel
+from rl_model import TD3RLModel, DQNRLModel
 
 from demo.simple_rl.env_wrapper import DiscreteEnvWrapper, ContinuousEnvWrapper
 
