@@ -4,8 +4,8 @@ dqn_config = dict(
     exp_name='dqn21_bev32_buf2e5_lr1e4_bs128_ns3000_update4_train_ft',
     env=dict(
         # Collect and eval env num
-        collector_env_num=16,
-        evaluator_env_num=0,
+        collector_env_num=15,
+        evaluator_env_num=1,
         simulator=dict(
             town='Town01',
             delta_seconds=0.05,
@@ -91,8 +91,8 @@ dqn_config = dict(
         ),
         wrapper=dict(
             # Collect and eval suites for training
-            collect=dict(suite='train_ft', ),
-            eval=dict(suite='FullTown02-v1', ),
+            collect=dict(suite='train_akira', ),
+            eval=dict(suite='eval_akira', ),
         ),
     ),
     server=[
@@ -113,16 +113,9 @@ dqn_config = dict(
             target_update_freq=100,
             learner=dict(
                 hook=dict(
-                    # Pre-train model path
-                    load_ckpt_before_run=dict(
-                        type='load_ckpt_without_iter',
-                        name='load_ckpt_without_iter',
-                        priority=20,
-                        position='before_run',
-                        ext_args=dict(load_path='')
-                    ),
-                    log_show_after_iter=1000,
-                    save_ckpt_after_iter=1000,
+                    load_ckpt_before_run='',
+                    log_show_after_iter=500,
+                    save_ckpt_after_iter=3000,
                 ),
             ),
         ),

@@ -113,7 +113,7 @@ td3_config = dict(
             learner=dict(
                 hook=dict(
                     load_ckpt_before_run='',
-                    log_show_after_iter=1000,
+                    log_show_after_iter=500,
                     save_ckpt_after_iter=3000,
                 ),
             ),
