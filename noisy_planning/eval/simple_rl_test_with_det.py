@@ -25,100 +25,108 @@ from noisy_planning.eval.simple_carla_env_new_render import SimpleCarlaEnvNewRen
 
 from easydict import EasyDict
 
-eval_config = EasyDict(dict(
-    env=dict(
-        simulator=dict(
-            town='Town01',
-            disable_two_wheels=True,
-            verbose=False,
-            waypoint_num=32,
-            planner=dict(
-                type='behavior',
-                resolution=1,
-            ),
-            obs=(
-                dict(
-                    name='birdview',
-                    type='bev',
-                    size=[160, 160],
-                    pixels_per_meter=5,
-                    pixels_ahead_vehicle=100,
-                ),
-                dict(
-                    name='toplidar',
-                    type='lidar',
-                    channels=64,
-                    range=32,
-                    points_per_second=1280000,
-                    rotation_frequency=20,
-                    upper_fov=10.0,
-                    lower_fov=-45.0,
-                    position=[0, 0.0, 1.6],
-                    rotation=[0, 0, 0],
-                    fixed_pt_num=40000,
-                ),
-            ),
-        ),
-        enable_detector=True,
-        detector=dict(
-            model_repo="openpcdet",
-            model_name="pointpillar",
-            ckpt="/home/xlju/Downloads/pointpillar/pointpillar/ckpt/checkpoint_epoch_160.pth",
-            data_config=dict(
-                class_names=['Car', 'Pedestrian'],
-                point_feature_encoder=dict(
-                    num_point_features=4,
-                ),
-                depth_downsample_factor=None
-            ),
-            score_thres={
-                "vehicle": 0.6,
-                "walker": 0.5
-            }
-        ),
-        col_is_failure=True,
-        stuck_is_failure=True,
-        ignore_light=True,
-        visualize=dict(
-            type='birdview',
-            save_dir="eval_out_det2",
-            outputs=['show', 'gif'],
-        ),
-        wrapper=dict(
-            suite='FullTown02-v1',
-        ),
-    ),
-    policy=dict(
-        cuda=True,
-        # Pre-train model path
-        ckpt_path='',
-        model=dict(
-            obs_shape=[5, 160, 160],
-        ),
-        eval=dict(
-            evaluator=dict(
-                render=True,
-                transform_obs=True,
-            ),
-        ),
-    ),
-    server=[dict(
-        carla_host='localhost',
-        carla_ports=[9000, 9002, 2]
-    )],
-)
-)
+# eval_config = EasyDict(dict(
+#     env=dict(
+#         simulator=dict(
+#             town='Town01',
+#             delta_seconds=0.05,
+#             disable_two_wheels=True,
+#             verbose=False,
+#             waypoint_num=32,
+#             planner=dict(
+#                 type='behavior',
+#                 resolution=1,
+#             ),
+#             obs=(
+#                 dict(
+#                     name='birdview',
+#                     type='bev',
+#                     size=[160, 160],
+#                     pixels_per_meter=5,
+#                     pixels_ahead_vehicle=100,
+#                 ),
+#                 dict(
+#                     name='toplidar',
+#                     type='lidar',
+#                     channels=64,
+#                     range=32,
+#                     points_per_second=1280000,
+#                     rotation_frequency=20,
+#                     upper_fov=10.0,
+#                     lower_fov=-45.0,
+#                     position=[0, 0.0, 1.6],
+#                     rotation=[0, 0, 0],
+#                     fixed_pt_num=40000,
+#                 ),
+#             ),
+#         ),
+#         enable_detector=False,
+#         detector=dict(
+#             model_repo="openpcdet",
+#             model_name="pointpillar",
+#             ckpt="/home/xlju/Downloads/pointpillar/pointpillar/ckpt/checkpoint_epoch_160.pth",
+#             data_config=dict(
+#                 class_names=['Car', 'Pedestrian'],
+#                 point_feature_encoder=dict(
+#                     num_point_features=4,
+#                 ),
+#                 depth_downsample_factor=None
+#             ),
+#             score_thres={
+#                 "vehicle": 0.6,
+#                 "walker": 0.5
+#             }
+#         ),
+#         col_is_failure=True,
+#         stuck_is_failure=True,
+#         ignore_light=True,
+#         visualize=dict(
+#             type='birdview',
+#             save_dir="eval_out_td3_without_det",
+#             outputs=['show', 'gif'],
+#         ),
+#         wrapper=dict(
+#             suite='FullTown02-v1',
+#         ),
+#     ),
+#     policy=dict(
+#         cuda=True,
+#         # Pre-train model path
+#         ckpt_path='',
+#         model=dict(
+#             obs_shape=[5, 160, 160],
+#         ),
+#         eval=dict(
+#             evaluator=dict(
+#                 render=True,
+#                 transform_obs=True,
+#             ),
+#         ),
+#     ),
+#     server=[dict(
+#         carla_host='localhost',
+#         carla_ports=[9000, 9002, 2]
+#     )],
+# )
+# )
 
-main_config = EasyDict(eval_config)
+from noisy_planning.config.td3_config import default_train_config
+default_train_config.env.visualize = dict(
+            type='birdview',
+            save_dir="eval_out_td3_without_det",
+            outputs=['show', 'gif'],
+        )
+default_train_config.policy.eval.evaluator.render = True
+main_config = EasyDict(default_train_config)
 
 
 def get_cls(spec):
     policy_cls, model_cls = {
         'dqn': (DQNPolicy, DQNRLModel),
-        'ddpg': (DDPGPolicy, DDPGRLModel),
+        # 'ddpg': (DDPGPolicy, DDPGRLModel),
         'td3': (TD3Policy, TD3RLModel),
-        'ppo': (PPOPolicy, PPORLModel),
-        'sac': (SACPolicy, SACRLModel),
+        # 'ppo': (PPOPolicy, PPORLModel),
+        # 'sac': (SACPolicy, SACRLModel),
     }[spec]
 
     return policy_cls, model_cls
@@ -127,7 +135,7 @@ def get_cls(spec):
 def main(args, seed=0):
     # args.ckpt_path = "/home/xlju/Project/Model_behavior/training_log/simple-rl_2022-02-05-09-44-39/ckpt/iteration_14000.pth.tar"
     # args.ckpt_path = "/home/xlju/Project/Model_behavior/DI-drive/noisy_planning/tst.pkl"
-    args.ckpt_path = "/home/xlju/iteration_3000.pth.tar"
+    args.ckpt_path = "/home/xlju/Downloads/ckpt_interrupt.pth.tar"
     cfg = main_config
     eval_epchs = 50
     enable_detection = cfg.env.enable_detector

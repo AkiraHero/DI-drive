@@ -132,7 +132,7 @@ def main(args, seed=0):
         eps_cfg = cfg.policy.other.eps
         epsilon_greedy = get_epsilon_greedy_fn(eps_cfg.start, eps_cfg.end, eps_cfg.decay, eps_cfg.type)
         learner.set_epsilon_greedy(epsilon_greedy)
-    tb_logger = learner.get_tb_logger()
+    tb_logger = learner.tb_logger()
 
 
     '''

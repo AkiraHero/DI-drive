@@ -103,9 +103,6 @@ class CarlaLearner(BaseLearner):
         assert self._replay_buffer is not None
         assert self._policy_name is not None
 
-    def get_tb_logger(self):
-        return self._tb_logger
-
     @staticmethod
     def check_batch_data(data_list):
         pass
