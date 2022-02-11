@@ -280,45 +280,45 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
 
 
 
-    '''
-    Note: error in property is dangerous, which may lead to another undesired property seeking. Be careful.
-    ''' 
-    @property
-    def ready_obs(self) -> Dict[int, Any]:
-        """
-        Overview:
-            Get the next observations.
-        Return:
-            A dictionary with observations and their environment IDs.
-        Note:
-            The observations are returned in np.ndarray.
-        Example:
-            >>>     obs_dict = env_manager.ready_obs
-            >>>     actions_dict = {env_id: model.forward(obs) for env_id, obs in obs_dict.items())}
-        """
-        no_done_env_idx = [i for i, s in self._env_states.items() if s != EnvState.DONE]
-        sleep_count = 0
-        while not any([self._env_states[i] == EnvState.RUN for i in no_done_env_idx]):
-            if sleep_count % 1000 == 0:
-                self.logger.warning(
-                    'VEC_ENV_MANAGER: all the not done envs are resetting, sleep {} times'.format(sleep_count)
-                )
-            time.sleep(0.001)
-            sleep_count += 1
-        res_dict = {i: self._ready_obs[i] for i in self.ready_env}
-
-        ############################## perform detection ##############################
-        if self._detection_model is not None:
-            data_list = []
-            for v in res_dict.values():
-                if 'detected' not in v.keys() or v['detected'] != 1.0:
-                    data_list.append(v)
-            if len(data_list):
-                self.insert_detection_result(data_list)
-
-            # check detection process stamp
-            for k, v in res_dict.items():
-                if not v['detected']:
-                    raise TypeError("Detection needed...")
-        ############################## perform detection ##############################
-        return res_dict
+    # '''
+    # Note: error in property is dangerous, which may lead to another undesired property seeking. Be careful.
+    # '''
+    # @property
+    # def ready_obs(self) -> Dict[int, Any]:
+    #     """
+    #     Overview:
+    #         Get the next observations.
+    #     Return:
+    #         A dictionary with observations and their environment IDs.
+    #     Note:
+    #         The observations are returned in np.ndarray.
+    #     Example:
+    #         >>>     obs_dict = env_manager.ready_obs
+    #         >>>     actions_dict = {env_id: model.forward(obs) for env_id, obs in obs_dict.items())}
+    #     """
+    #     no_done_env_idx = [i for i, s in self._env_states.items() if s != EnvState.DONE]
+    #     sleep_count = 0
+    #     while not any([self._env_states[i] == EnvState.RUN for i in no_done_env_idx]):
+    #         if sleep_count % 1000 == 0:
+    #             self.logger.warning(
+    #                 'VEC_ENV_MANAGER: all the not done envs are resetting, sleep {} times'.format(sleep_count)
+    #             )
+    #         time.sleep(0.001)
+    #         sleep_count += 1
+    #     res_dict = {i: self._ready_obs[i] for i in self.ready_env}
+    #
+    #     ############################## perform detection ##############################
+    #     if self._detection_model is not None:
+    #         data_list = []
+    #         for v in res_dict.values():
+    #             if 'detected' not in v.keys() or v['detected'] != 1.0:
+    #                 data_list.append(v)
+    #         if len(data_list):
+    #             self.insert_detection_result(data_list)
+    #
+    #         # check detection process stamp
+    #         for k, v in res_dict.items():
+    #             if not v['detected']:
+    #                 raise TypeError("Detection needed...")
+    #     ############################## perform detection ##############################
+    #     return res_dict
