@@ -38,8 +38,8 @@ class BEVSpeedConvEncoder(nn.Module):
         input_dim = obs_shape[0]
         for i in range(len(hidden_dim_list)):
             layers.append(nn.Conv2d(input_dim, hidden_dim_list[i], kernel_size[i], stride[i]))
-            if i == 0:
-                layers.append(nn.BatchNorm2d(hidden_dim_list[i]))
+            #if i == 0:
+            #    layers.append(nn.BatchNorm2d(hidden_dim_list[i]))
             layers.append(self._relu)
             if i == 0:
                 layers.append(nn.MaxPool2d(kernel_size=3, stride=2, padding=1))
