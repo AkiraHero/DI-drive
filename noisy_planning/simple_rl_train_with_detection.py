@@ -208,11 +208,12 @@ def main(args, seed=0):
     '''
     Replay buffer
     '''
-    if cfg.policy.get('priority', False):
-        replay_buffer = AdvancedReplayBuffer(cfg.policy.other.replay_buffer, tb_logger, exp_name=cfg.exp_name)
-    else:
-        replay_buffer = NaiveReplayBuffer(cfg.policy.other.replay_buffer, tb_logger, exp_name=cfg.exp_name)
-    learner.set_replay_buffer(replay_buffer)
+    if args.policy != 'ppo':
+        if cfg.policy.get('priority', False):
+            replay_buffer = AdvancedReplayBuffer(cfg.policy.other.replay_buffer, tb_logger, exp_name=cfg.exp_name)
+        else:
+            replay_buffer = NaiveReplayBuffer(cfg.policy.other.replay_buffer, tb_logger, exp_name=cfg.exp_name)
+        learner.set_replay_buffer(replay_buffer)
 
     '''
     Training loop
