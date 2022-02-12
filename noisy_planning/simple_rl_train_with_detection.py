@@ -167,6 +167,7 @@ def main(args, seed=0):
         detector=detection_model,
         detection_max_batch_size=detection_max_batch_size,
         bev_obs_config=obs_bev_config,
+        env_ports=[tcp_list[i] for i in range(collector_env_num)],
     )
     collector_env.seed(seed)
     collector = SampleSerialCollector(cfg.policy.collect.collector,
@@ -189,6 +190,7 @@ def main(args, seed=0):
                 detector=detection_model,
                 detection_max_batch_size=detection_max_batch_size,
                 bev_obs_config=obs_bev_config,
+                env_ports=[tcp_list[collector_env_num + i] for i in range(evaluator_env_num)]
             )
             # Uncomment this to add save replay when evaluation
             # evaluate_env.enable_save_replay(cfg.env.replay_path)
