@@ -38,7 +38,7 @@ sac_config = dict(
                 ),
             )
         ),
-        enable_detector=True,
+        enable_detector=False,
         detector=dict(
             model_repo="openpcdet",
             model_name="pointpillar",
@@ -142,13 +142,12 @@ sac_config = dict(
                 replay_buffer_size=400000,
                 replay_buffer_start_size=10000,
                 max_use=16,
+                periodic_thruput_seconds=120,
                 monitor=dict(
                     sampled_data_attr=dict(
                         print_freq=100,  # times
                     ),
-                    periodic_thruput=dict(
-                        seconds=120,
-                    ),
+                    periodic_thruput_seconds=120,
                 ),
             ),
         ),

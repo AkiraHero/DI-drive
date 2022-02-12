@@ -5,7 +5,7 @@ td3_config = dict(
     env=dict(
         collector_env_num=15,
         evaluator_env_num=1,
-        reward_func="compute_reward_cheat",
+        #reward_func="compute_reward_cheat",
         simulator=dict(
             town='Town01',
             delta_seconds=0.05,
@@ -39,7 +39,7 @@ td3_config = dict(
                 ),
             )
         ),
-        enable_detector=True,
+        enable_detector=False,
         detector=dict(
             model_repo="openpcdet",
             model_name="pointpillar",
@@ -106,15 +106,15 @@ td3_config = dict(
             obs_shape=[5, 160, 160],
         ),
         learn=dict(
-            batch_size=64,
+            batch_size=128,
             learning_rate_actor=0.0001,
             learning_rate_critic=0.0001,
             weight_decay=0.0001,
             learner=dict(
                 hook=dict(
                     load_ckpt_before_run='',
-                    log_show_after_iter=500,
-                    save_ckpt_after_iter=100,
+                    log_show_after_iter=50,
+                    save_ckpt_after_iter=1000,
                 ),
             ),
         ),
@@ -123,7 +123,7 @@ td3_config = dict(
             noise_sigma=0.1,
             n_sample=3000,
             collector=dict(
-                collect_print_freq=1000,
+                collect_print_freq=100,
                 deepcopy_obs=True,
                 transform_obs=True,
             ),

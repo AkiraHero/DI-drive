@@ -39,7 +39,7 @@ dqn_config = dict(
                 ),
             )
         ),
-        enable_detector=True,
+        enable_detector=False,
         detector=dict(
             model_repo="openpcdet",
             model_name="pointpillar",

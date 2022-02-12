@@ -32,10 +32,10 @@ fi
 if [ -z "$2" ]
 then
       echo "You did not designate a config file, using default one by policy."
-      python simple_rl_train_with_detection.py -p ppo  -n ${sub_out_dir} 2>&1|tee ${real_time_log}
+      python simple_rl_train_with_detection.py --withoutcudnn -p ppo  -n ${sub_out_dir} 2>&1|tee ${real_time_log}
 else
       echo "Your config file is $2"
-      python simple_rl_train_with_detection.py -p ppo  -n ${sub_out_dir} -d $2 2>&1|tee ${real_time_log}
+      python simple_rl_train_with_detection.py --withoutcudnn -p ppo  -n ${sub_out_dir} -d $2 2>&1|tee ${real_time_log}
 fi
 
 

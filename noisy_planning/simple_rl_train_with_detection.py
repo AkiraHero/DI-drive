@@ -4,6 +4,8 @@ from functools import partial
 import traceback
 import os
 import yaml
+import numpy # import numpy before torch to avoid some inexpected err
+import torch
 from easydict import EasyDict
 
 # ding
@@ -235,6 +237,9 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--name', type=str, default='simple-rl', help='experiment name')
     parser.add_argument('-p', '--policy', default='td3', choices=['dqn', 'ppo', 'td3', 'sac', 'ddpg'], help='RL policy')
     parser.add_argument('-d', '--ding-cfg', default=None, help='DI-engine config path')
-
+    parser.add_argument('--withoutcudnn', action='store_true')
     args = parser.parse_args()
+    if args.withoutcudnn:
+        print("[MAIN]disable cudnn backend.")
+        torch.backends.cudnn.enabled = False
     main(args)
