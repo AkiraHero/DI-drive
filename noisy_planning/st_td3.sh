@@ -1,11 +1,11 @@
 time_tag="-$(date +%F-%H-%M-%S)"
-experiment_tag="default"
+experiment_tag="default_td3"
 if [ -z "$1" ]
 then
       echo "You did not designate a experiment tag, using [default]"
 else
-      echo "Your experiment tag is $1"
-      experiment_tag="$1"
+      experiment_tag="td3-$1"
+      echo "Your experiment tag is $experiment_tag"
 fi
 
 

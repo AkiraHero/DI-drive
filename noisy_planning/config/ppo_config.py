@@ -1,11 +1,10 @@
 from easydict import EasyDict
 
-td3_config = dict(
-    exp_name='td32_bev32_buf4e5_lr1e4_bs128_ns3000_update4_train_ft',
+ppo_config = dict(
+    exp_name='ppo21_bev32_lr1e4_bs128_ns3000_update5_train_ft',
     env=dict(
         collector_env_num=15,
         evaluator_env_num=1,
-        reward_func="compute_reward_cheat",
         simulator=dict(
             town='Town01',
             delta_seconds=0.05,
@@ -37,14 +36,14 @@ td3_config = dict(
                     rotation=[0, 0, 0],
                     fixed_pt_num=40000,
                 ),
-            )
+            ),
         ),
-        enable_detector=True,
+        enable_detector=False,
         detector=dict(
             model_repo="openpcdet",
             model_name="pointpillar",
             ckpt="/cpfs2/user/juxiaoliang/checkpoint_epoch_160.pth",
-            #ckpt="/home/xlju/Downloads/pointpillar/pointpillar/ckpt/checkpoint_epoch_160.pth",
+            # ckpt="/home/xlju/Downloads/pointpillar/pointpillar/ckpt/checkpoint_epoch_160.pth",
             max_batch_size=32,
             data_config=dict(
                 class_names=['Car', 'Pedestrian'],
@@ -66,8 +65,8 @@ td3_config = dict(
         wrong_direction_is_failure=True,
         off_route_is_failure=True,
         off_route_distance=7.5,
-        # finish_reward=300,
-        replay_path='./td3_video',
+
+        replay_path='./ppo_video',
         visualize=dict(
             type='birdview',
         ),
@@ -101,56 +100,49 @@ td3_config = dict(
     ],
     policy=dict(
         cuda=True,
-        priority=True,
+        nstep_return=False,
+        on_policy=True,
         model=dict(
             obs_shape=[5, 160, 160],
         ),
         learn=dict(
-            batch_size=64,
-            learning_rate_actor=0.0001,
-            learning_rate_critic=0.0001,
+            epoch_per_collect=5,
+            batch_size=128,
+            learning_rate=0.0001,
             weight_decay=0.0001,
+            value_weight=0.5,
+            adv_norm=False,
+            entropy_weight=0.01,
+            clip_ratio=0.2,
+            target_update_freq=100,
             learner=dict(
                 hook=dict(
+                    log_show_after_iter=1000,
                     load_ckpt_before_run='',
-                    log_show_after_iter=500,
-                    save_ckpt_after_iter=100,
+                    save_ckpt_after_iter=3000,
                 ),
             ),
         ),
         collect=dict(
             pre_sample_num=3000,
-            noise_sigma=0.1,
             n_sample=3000,
             collector=dict(
                 collect_print_freq=1000,
                 deepcopy_obs=True,
                 transform_obs=True,
             ),
+            discount_factor=0.9,
+            gae_lambda=0.95,
         ),
         eval=dict(
             evaluator=dict(
-                eval_freq=3000,
+                eval_freq=5000,
                 n_episode=5,
-                stop_rate=2.0, # do not stop by eval
+                stop_rate=0.7,
                 transform_obs=True,
-            ),
-        ),
-        other=dict(
-            replay_buffer=dict(
-                replay_buffer_size=400000,
-                max_use=16,
-                monitor=dict(
-                    sampled_data_attr=dict(
-                        print_freq=100,  # times
-                    ),
-                    periodic_thruput=dict(
-                        seconds=120,
-                    ),
-                ),
             ),
         ),
     ),
 )
 
-default_train_config = EasyDict(td3_config)
+default_train_config = EasyDict(ppo_config)
