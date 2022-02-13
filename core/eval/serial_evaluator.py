@@ -46,7 +46,7 @@ class SerialEvaluator(BaseEvaluator):
         # stop value of success rate
         stop_rate=1,
         # max steps to evaluate to avoid too long sequences
-        env_max_steps = 400,
+        env_max_steps=2000,
     )
 
     def __init__(
@@ -176,7 +176,7 @@ class SerialEvaluator(BaseEvaluator):
                         self._logger.info(
                             "[EVALUATOR] env {} stop episode for it is too long,"
                             " stuck: {}, current episode: {}, step: {}".format(
-                                env_id, result['stuck'], episode_count, result['step']
+                                env_id, result['stuck'], episode_count, env_steps[env_id]
                             ))
                         self._policy.reset([env_id])
                         env_steps[env_id] = 0
