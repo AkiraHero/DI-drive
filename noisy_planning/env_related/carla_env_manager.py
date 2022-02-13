@@ -287,7 +287,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                     break
             # Because each thread updates the corresponding env_id value, they won't lead to a thread-safe problem.
             self._env_states[env_id] = EnvState.RUN
-            self.logger.error("Env {} reset success!".format(env_id))
+            self.logger.info("Env {} reset success!".format(env_id))
         except Exception as e:
             self.logger.error("Ready to close for unonymous exception...")
             self.close()
