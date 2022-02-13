@@ -200,6 +200,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         self._create_env_subprocess(env_id)
 
     def _reset(self, env_id: int) -> None:
+        verbose = False
 
         # @retry_wrapper(max_retry=self._max_retry, waiting_time=self._retry_waiting_time)
         def reset_fn() -> bool:
@@ -212,10 +213,11 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 try:
                     recv_data = self._pipe_parents[env_id].recv()
                 except Exception as e:
-                    self.logger.error("[RESET]time={} Env {} poll success, but recv error! have to be restart!!"
-                                      .format(self._env_reset_try_num[env_id], env_id)
-                                      + '\nEnv {} reset [Exception] in receiving signal:\n'.format(env_id) \
-                                      + ''.join(traceback.format_tb(e.__traceback__)) + repr(e))
+                    if verbose:
+                        self.logger.error("[RESET]time={} Env {} poll success, but recv error! have to be restart!!"
+                                          .format(self._env_reset_try_num[env_id], env_id)
+                                          + '\nEnv {} reset [Exception] in receiving signal:\n'.format(env_id) \
+                                          + ''.join(traceback.format_tb(e.__traceback__)) + repr(e))
                     have_to_be_restart = True
             # if self._reset_param[env_id] is None, just reset specific env, not pass reset param
             if not have_to_be_restart:
@@ -225,12 +227,14 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                     reset_paras = self._reset_param[env_id]
                 try:
                     self._pipe_parents[env_id].send(['reset', [], reset_paras])
-                    self.logger.error("[RESET]time={} Env {} send reset suc!!"
-                                      .format(self._env_reset_try_num[env_id], env_id))
+                    if verbose:
+                        self.logger.error("[RESET]time={} Env {} send reset suc!!"
+                                          .format(self._env_reset_try_num[env_id], env_id))
                     if self._pipe_parents[env_id].poll(self._connect_timeout):
                         obs = self._pipe_parents[env_id].recv()
-                        self.logger.error("[RESET]time={} Env {} send/recv reset suc!!"
-                                          .format(self._env_reset_try_num[env_id], env_id))
+                        if verbose:
+                            self.logger.error("[RESET]time={} Env {} send/recv reset suc!!"
+                                              .format(self._env_reset_try_num[env_id], env_id))
                         if self._check_data({env_id: obs}, close=False):
                             if self._shared_memory:
                                 obs = self._obs_buffers[env_id].get()
@@ -238,18 +242,21 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                             self._env_reset_try_num[env_id] = 0
                             return True
                         else:
-                            self.logger.error("[RESET]time={} Env {} send/recv reset suc, but checkdata fail!!"
-                                              .format(self._env_reset_try_num[env_id], env_id))
+                            if verbose:
+                                self.logger.error("[RESET]time={} Env {} send/recv reset suc, but checkdata fail!!"
+                                                  .format(self._env_reset_try_num[env_id], env_id))
                             have_to_be_restart = True
                     else:
-                        self.logger.error("[RESET]time={} Env {} send reset suc, but recv timeout!!"
-                                          .format(self._env_reset_try_num[env_id], env_id))
+                        if verbose:
+                            self.logger.error("[RESET]time={} Env {} send reset suc, but recv timeout!!"
+                                              .format(self._env_reset_try_num[env_id], env_id))
                         have_to_be_restart = True
                 except Exception as e:
-                    self.logger.error("[RESET]time={} Env {} send reset error! have to be restart!!"
-                                      .format(self._env_reset_try_num[env_id], env_id)
-                                      + '\nEnv {} reset [Exception] in receiving signal:\n'.format(env_id) \
-                                      + ''.join(traceback.format_tb(e.__traceback__)) + repr(e))
+                    if verbose:
+                        self.logger.error("[RESET]time={} Env {} send reset error! have to be restart!!"
+                                          .format(self._env_reset_try_num[env_id], env_id)
+                                          + '\nEnv {} reset [Exception] in receiving signal:\n'.format(env_id) \
+                                          + ''.join(traceback.format_tb(e.__traceback__)) + repr(e))
                     have_to_be_restart = True
 
             if not self._closed and have_to_be_restart:
@@ -259,7 +266,8 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 if self._subprocesses[env_id].is_alive():
                     self._subprocesses[env_id].terminate()
                 if self._env_ports:
-                    cmd_ = "lsof -i:{}|grep python|awk \'{{print \"kill -9 \" $2}}\'|sh".format(self._env_ports[env_id][1])
+                    cmd_ = "lsof -i:{}|grep python|awk \'{{print \"kill -9 \" $2}}\'|sh".format(
+                        self._env_ports[env_id][1])
                     self.logger.error("System cmd:{}".format(cmd_))
                     kill_suc = os.system(cmd_)
                     if 0 != kill_suc:
