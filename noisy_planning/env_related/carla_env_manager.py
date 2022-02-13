@@ -261,8 +261,9 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 if self._subprocesses[env_id].is_alive():
                     self._subprocesses[env_id].terminate()
                 if self._env_ports:
-                    kill_suc = os.system("lsof -i:{}|grep python|awk \'{{print \"kill -9 \" $2}}\'|sh"
-                                         .format(self._env_ports[env_id]))
+                    cmd_ = "lsof -i:{}|grep python|awk \'{{print \"kill -9 \" $2}}\'|sh".format(self._env_ports[env_id][1])
+                    self.logger.error("System cmd:{}".format(cmd_))
+                    kill_suc = os.system(cmd_)
                     if 0 != kill_suc:
                         self.logger.error("Fail to kill the port process by system, err_code={}...".format(kill_suc))
                 # reset the subprocess
