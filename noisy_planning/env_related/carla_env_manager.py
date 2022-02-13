@@ -202,7 +202,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
     def _reset(self, env_id: int) -> None:
 
         # @retry_wrapper(max_retry=self._max_retry, waiting_time=self._retry_waiting_time)
-        def reset_fn():
+        def reset_fn() -> bool:
             self._env_reset_try_num[env_id] += 1
             if self._env_reset_try_num[env_id] > 1:
                 self.logger.error(
@@ -234,8 +234,6 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                         if self._check_data({env_id: obs}, close=False):
                             if self._shared_memory:
                                 obs = self._obs_buffers[env_id].get()
-                            # Because each thread updates the corresponding env_id value, they won't lead to a thread-safe problem.
-                            self._env_states[env_id] = EnvState.RUN
                             self._ready_obs[env_id] = obs
                             self._env_reset_try_num[env_id] = 0
                             return True
@@ -279,6 +277,9 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 if self._closed:
                     self.logger.error("Reseting interrupted for recv closing signal...")
                     break
+            # Because each thread updates the corresponding env_id value, they won't lead to a thread-safe problem.
+            self._env_states[env_id] = EnvState.RUN
+            self.logger.error("Env {} reset success!".format(env_id))
         except Exception as e:
             self.logger.error("Ready to close for unonymous exception...")
             self.close()
