@@ -13,14 +13,14 @@ from ding.utils import ENV_MANAGER_REGISTRY
 from ding.utils import PropagatingThread
 from ding.envs.env.base_env import BaseEnvTimestep
 
-from noisy_planning.utils.debug_utils import generate_general_logger
+from noisy_planning.utils.debug_utils import generate_general_logger, TestTimer
 from noisy_planning.detector.detection_model_wrapper import DetectionModelWrapper
 from noisy_planning.detector.detection_utils import detection_process
 
 '''
 compatable with Ding v0.2.1
 '''
-
+timer = TestTimer()
 
 @ENV_MANAGER_REGISTRY.register('carla_subprocess')
 class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
@@ -164,13 +164,16 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         if self._detection_model is not None:
             data_list = []
             for env_id, ts in timesteps.items():
-                if is_abnormal_timestep(ts):
+                if not is_abnormal_timestep(ts):
                     v = ts.obs
                     if v is not None:
                         if 'detected' not in v.keys() or v['detected'] != 1.0:
                             data_list.append(v)
             if len(data_list):
+                timer.st_point("det_step")
+                self.logger.warning("perform det in step with list len={}".format(len(data_list)))
                 self.insert_detection_result(data_list)
+                timer.ed_point("det_step")
         ############################## perform detection ##############################
 
         for env_id, timestep in timesteps.items():
@@ -347,7 +350,10 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                     if 'detected' not in v.keys() or v['detected'] != 1.0:
                         data_list.append(v)
                 if len(data_list):
+                    timer.st_point("det_ready_obs")
+                    self.logger.warning("perform det in ready_obs with list len={}".format(len(data_list)))
                     self.insert_detection_result(data_list)
+                    timer.ed_point("det_ready_obs")
 
                 # check detection process stamp
                 for k, v in res_dict.items():
