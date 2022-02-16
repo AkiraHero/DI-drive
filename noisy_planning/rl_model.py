@@ -65,8 +65,13 @@ class BEVSpeedConvEncoder(nn.Module):
         :Returns:
             torch.Tensor: Embedding feature.
         """
-        image = data['birdview'].permute(0, 3, 1, 2)
+        birdview_data = data['birdview']
         speed = data['speed']
+        if 3 == len(birdview_data.shape):  # fill batch_size dim
+            birdview_data = birdview_data.unsqueeze(0)
+            speed = speed.unsqueeze(0)
+        image = birdview_data.permute(0, 3, 1, 2)
+
         x = self._model(image)
         x = self._mid(x)
         speed_embedding_size = self._embedding_size - self._embedding_size // 2
