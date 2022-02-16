@@ -1,4 +1,5 @@
 # system
+import logging
 import argparse
 from functools import partial
 import traceback
@@ -13,6 +14,7 @@ from ding.envs import BaseEnvManager
 from noisy_planning.env_related.carla_env_manager import CarlaSyncSubprocessEnvManager
 from ding.policy import DQNPolicy, PPOPolicy, TD3Policy, SACPolicy, DDPGPolicy
 from ding.worker import BaseLearner, SampleSerialCollector, AdvancedReplayBuffer, NaiveReplayBuffer
+from noisy_planning.env_related.SampleTailCollector import SampleTailCollector
 from ding.utils import set_pkg_seed
 from ding.rl_utils import get_epsilon_greedy_fn
 
@@ -100,7 +102,7 @@ def main(args, seed=0):
     '''
     Config
     '''
-    enable_eval = True
+    enable_eval = False
     cfg = get_cfg(args)
     tcp_list = parse_carla_tcp(cfg.server)
     collector_env_num, evaluator_env_num = cfg.env.collector_env_num, cfg.env.evaluator_env_num
@@ -170,7 +172,12 @@ def main(args, seed=0):
         env_ports=[tcp_list[i] for i in range(collector_env_num)],
     )
     collector_env.seed(seed)
-    collector = SampleSerialCollector(cfg.policy.collect.collector,
+    if args.use_new_collector:
+        logging.warning("You choose to use traj tail!!!")
+        collector_cls = SampleTailCollector
+    else:
+        collector_cls = SampleSerialCollector
+    collector = collector_cls(cfg.policy.collect.collector,
                                       collector_env,
                                       policy.collect_mode,
                                       tb_logger,
@@ -240,6 +247,7 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--name', type=str, default='simple-rl', help='experiment name')
     parser.add_argument('-p', '--policy', default='td3', choices=['dqn', 'ppo', 'td3', 'sac', 'ddpg'], help='RL policy')
     parser.add_argument('-d', '--ding-cfg', default=None, help='DI-engine config path')
+    parser.add_argument('--use_new_collector', action='store_true')
     parser.add_argument('--withoutcudnn', action='store_true')
     args = parser.parse_args()
     if args.withoutcudnn:
