@@ -100,7 +100,7 @@ class CarlaLearner(BaseLearner):
     def check_element(self):
         assert self._collector is not None
         assert self._collector_config is not None
-        assert self._replay_buffer is not None
+        # assert self._replay_buffer is not None
         assert self._policy_name is not None
 
     @staticmethod

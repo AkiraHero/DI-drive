@@ -443,6 +443,349 @@ class SimpleCarlaEnv(BaseDriveEnv):
             total_reward += v
         return total_reward, reward_info
 
+    def ini_compute_reward2(self) -> Tuple[float, Dict]:
+        """
+        Compute reward for current frame, with details returned in a dict. In short, in contains goal reward,
+        route following reward calculated by route length in current and last frame, some navigation attitude reward
+        with respective to target waypoint, and failure reward by checking each failure event.
+
+        :Returns:
+            Tuple[float, Dict]: Total reward value and detail for each value.
+        """
+
+        def dist(loc1, loc2):
+            return ((loc1[0] - loc2[0]) ** 2 + (loc1[1] - loc2[1]) ** 2) ** 0.5
+
+        def angle(vec1, vec2):
+            cos = vec1.dot(vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2) + 1e-10)
+            cos = np.clip(cos, -1, 1)
+            angle = np.arccos(cos)
+            angle = np.clip(angle, 0, np.pi)
+            return angle
+
+        # goal reward
+        goal_reward = 0
+        plan_distance = self._simulator.end_distance
+        if self.is_success():
+            goal_reward += self._success_reward
+        elif self.is_failure():
+            goal_reward -= 1
+
+        # distance reward
+        location = self._simulator_databuffer['state']['location']
+        target = self._simulator_databuffer['navigation']['target']
+        target_distance = dist(target, location)
+        cur_distance = plan_distance + target_distance
+        if self._last_distance is None:
+            distance_reward = 0
+        else:
+            distance_reward = np.clip((self._last_distance - cur_distance) * 2, 0, 1)
+        self._last_distance = cur_distance
+
+        # state reward: speed, angle, steer, mid lane
+        speed = self._simulator_databuffer['state']['speed'] / 3.6
+        # speed_limit = self._simulator_databuffer['navigation']['speed_limit'] / 3.6
+        speed_limit = 10.0
+        agent_state = self._simulator_databuffer['navigation']['agent_state']
+        target_speed = speed_limit
+        if agent_state == 2 or agent_state == 3:
+            target_speed = 0
+        elif agent_state == 4 and not self._ignore_light:
+            target_speed = 0
+        # speed_reward = 1 - abs(speed - target_speed) / speed_limit
+        speed_reward = 0
+        if speed < target_speed / 5:
+            speed_reward -= 1
+        if speed > target_speed:
+            speed_reward -= 1
+
+        forward_vector = self._simulator_databuffer['state']['forward_vector']
+        target_forward = self._simulator_databuffer['navigation']['target_forward']
+        angle_reward = 3 * (0.1 - angle(forward_vector, target_forward) / np.pi)
+
+        steer = self._simulator_databuffer['action'].get('steer', 0)
+        command = self._simulator_databuffer['navigation']['command']
+        steer_reward = 0.5
+        if abs(steer - self._last_steer) > 0.5:
+            steer_reward -= 0.2
+        if command == 1 and steer > 0.1:
+            steer_reward = 0
+        elif command == 2 and steer < -0.1:
+            steer_reward = 0
+        elif (command == 3 or command == 4) and abs(steer) > 0.3:
+            steer_reward = 0
+        self._last_steer = steer
+
+        waypoint_list = self._simulator_databuffer['navigation']['waypoint_list']
+        lane_mid_dis = lane_mid_distance(waypoint_list, location)
+        lane_reward = -0.5 * lane_mid_dis
+
+        failure_reward = 0
+        if self._col_is_failure and self._collided:
+            failure_reward -= 5
+        elif self._stuck_is_failure and self._stuck:
+            failure_reward -= 5
+        elif self._off_road_is_failure and self._off_road:
+            failure_reward -= 5
+        elif self._ran_light_is_failure and not self._ignore_light and self._ran_light:
+            failure_reward -= 5
+        elif self._wrong_direction_is_failure and self._wrong_direction:
+            failure_reward -= 5
+
+        reward_info = {}
+        total_reward = 0
+        reward_info['goal_reward'] = goal_reward
+        reward_info['distance_reward'] = distance_reward
+        reward_info['speed_reward'] = speed_reward
+        reward_info['angle_reward'] = angle_reward
+        reward_info['steer_reward'] = steer_reward
+        reward_info['lane_reward'] = lane_reward
+        reward_info['failure_reward'] = failure_reward
+
+        reward_dict = {
+            'goal': goal_reward,
+            'distance': distance_reward,
+            'speed': speed_reward,
+            'angle': angle_reward,
+            'steer': steer_reward,
+            'lane': lane_reward,
+            'failure': failure_reward
+        }
+        for rt in self._reward_type:
+            total_reward += reward_dict[rt]
+
+        return total_reward, reward_info
+
+    def ini_compute_reward3(self) -> Tuple[float, Dict]:
+        """
+        Compute reward for current frame, with details returned in a dict. In short, in contains goal reward,
+        route following reward calculated by route length in current and last frame, some navigation attitude reward
+        with respective to target waypoint, and failure reward by checking each failure event.
+
+        :Returns:
+            Tuple[float, Dict]: Total reward value and detail for each value.
+        """
+
+        def dist(loc1, loc2):
+            return ((loc1[0] - loc2[0]) ** 2 + (loc1[1] - loc2[1]) ** 2) ** 0.5
+
+        def angle(vec1, vec2):
+            cos = vec1.dot(vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2) + 1e-10)
+            cos = np.clip(cos, -1, 1)
+            angle = np.arccos(cos)
+            angle = np.clip(angle, 0, np.pi)
+            return angle
+
+        # goal reward
+        goal_reward = 0
+        plan_distance = self._simulator.end_distance
+        if self.is_success():
+            goal_reward += self._success_reward
+        elif self.is_failure():
+            goal_reward -= 1
+
+        # distance reward
+        location = self._simulator_databuffer['state']['location']
+        target = self._simulator_databuffer['navigation']['target']
+        target_distance = dist(target, location)
+        cur_distance = plan_distance + target_distance
+        if self._last_distance is None:
+            distance_reward = 0
+        else:
+            distance_reward = np.clip((self._last_distance - cur_distance) * 2, 0, 1)
+        self._last_distance = cur_distance
+
+        # state reward: speed, angle, steer, mid lane
+        speed = self._simulator_databuffer['state']['speed'] / 3.6
+        # speed_limit = self._simulator_databuffer['navigation']['speed_limit'] / 3.6
+        speed_limit = 10.0
+        agent_state = self._simulator_databuffer['navigation']['agent_state']
+        target_speed = speed_limit
+        if agent_state == 2 or agent_state == 3:
+            target_speed = 0
+        elif agent_state == 4 and not self._ignore_light:
+            target_speed = 0
+        # speed_reward = 1 - abs(speed - target_speed) / speed_limit
+        speed_reward = 0
+        if speed < target_speed / 5:
+            speed_reward -= 1
+        if speed > target_speed:
+            speed_reward -= 1
+
+        forward_vector = self._simulator_databuffer['state']['forward_vector']
+        target_forward = self._simulator_databuffer['navigation']['target_forward']
+        angle_reward = 3 * (0.1 - angle(forward_vector, target_forward) / np.pi)
+
+        steer = self._simulator_databuffer['action'].get('steer', 0)
+        command = self._simulator_databuffer['navigation']['command']
+        steer_reward = 0.5
+        if abs(steer - self._last_steer) > 0.5:
+            steer_reward -= 0.2
+        # if command == 1 and steer > 0.1:
+        #     steer_reward = 0
+        # elif command == 2 and steer < -0.1:
+        #     steer_reward = 0
+        # elif (command == 3 or command == 4) and abs(steer) > 0.3:
+        #     steer_reward = 0
+        self._last_steer = steer
+
+        waypoint_list = self._simulator_databuffer['navigation']['waypoint_list']
+        lane_mid_dis = lane_mid_distance(waypoint_list, location)
+        lane_reward = -0.5 * lane_mid_dis
+
+        failure_reward = 0
+        if self._col_is_failure and self._collided:
+            failure_reward -= 5
+        elif self._stuck_is_failure and self._stuck:
+            failure_reward -= 5
+        elif self._off_road_is_failure and self._off_road:
+            failure_reward -= 5
+        elif self._ran_light_is_failure and not self._ignore_light and self._ran_light:
+            failure_reward -= 5
+        elif self._wrong_direction_is_failure and self._wrong_direction:
+            failure_reward -= 5
+
+        reward_info = {}
+        total_reward = 0
+        reward_info['goal_reward'] = goal_reward
+        reward_info['distance_reward'] = distance_reward
+        reward_info['speed_reward'] = speed_reward
+        reward_info['angle_reward'] = angle_reward
+        reward_info['steer_reward'] = steer_reward
+        reward_info['lane_reward'] = lane_reward
+        reward_info['failure_reward'] = failure_reward
+
+        reward_dict = {
+            'goal': goal_reward,
+            'distance': distance_reward,
+            'speed': speed_reward,
+            'angle': angle_reward,
+            'steer': steer_reward,
+            'lane': lane_reward,
+            'failure': failure_reward
+        }
+        for rt in self._reward_type:
+            total_reward += reward_dict[rt]
+
+        return total_reward, reward_info
+
+
+    def ini_compute_reward4(self) -> Tuple[float, Dict]:
+        """
+        Compute reward for current frame, with details returned in a dict. In short, in contains goal reward,
+        route following reward calculated by route length in current and last frame, some navigation attitude reward
+        with respective to target waypoint, and failure reward by checking each failure event.
+
+        :Returns:
+            Tuple[float, Dict]: Total reward value and detail for each value.
+        """
+
+        def dist(loc1, loc2):
+            return ((loc1[0] - loc2[0]) ** 2 + (loc1[1] - loc2[1]) ** 2) ** 0.5
+
+        def angle(vec1, vec2):
+            cos = vec1.dot(vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2) + 1e-10)
+            cos = np.clip(cos, -1, 1)
+            angle = np.arccos(cos)
+            angle = np.clip(angle, 0, np.pi)
+            return angle
+
+        # goal reward
+        goal_reward = 0
+        plan_distance = self._simulator.end_distance
+        if self.is_success():
+            goal_reward += self._success_reward
+        elif self.is_failure():
+            goal_reward -= 1
+
+        # distance reward
+        location = self._simulator_databuffer['state']['location']
+        target = self._simulator_databuffer['navigation']['target']
+        target_distance = dist(target, location)
+        cur_distance = plan_distance + target_distance
+        if self._last_distance is None:
+            distance_reward = 0
+        else:
+            distance_reward = np.clip((self._last_distance - cur_distance) * 2, 0, 1)
+        self._last_distance = cur_distance
+
+        # state reward: speed, angle, steer, mid lane
+        speed = self._simulator_databuffer['state']['speed'] / 3.6
+        # speed_limit = self._simulator_databuffer['navigation']['speed_limit'] / 3.6
+        speed_limit = 10.0
+        agent_state = self._simulator_databuffer['navigation']['agent_state']
+        target_speed = speed_limit
+        if agent_state == 2 or agent_state == 3:
+            target_speed = 0
+        elif agent_state == 4 and not self._ignore_light:
+            target_speed = 0
+        # speed_reward = 1 - abs(speed - target_speed) / speed_limit
+        speed_reward = 0
+        if speed < target_speed / 5:
+            speed_reward -= 1
+        if speed > target_speed:
+            speed_reward -= 1
+
+        forward_vector = self._simulator_databuffer['state']['forward_vector']
+        target_forward = self._simulator_databuffer['navigation']['target_forward']
+        angle_reward = 3 * (0.1 - angle(forward_vector, target_forward) / np.pi)
+
+        steer = self._simulator_databuffer['action'].get('steer', 0)
+        command = self._simulator_databuffer['navigation']['command']
+        steer_reward = 0.5
+        if abs(steer - self._last_steer) > 0.5:
+            steer_reward -= 0.2
+        # if command == 1 and steer > 0.1:
+        #     steer_reward = 0
+        # elif command == 2 and steer < -0.1:
+        #     steer_reward = 0
+        # elif (command == 3 or command == 4) and abs(steer) > 0.3:
+        #     steer_reward = 0
+        self._last_steer = steer
+
+        waypoint_list = self._simulator_databuffer['navigation']['waypoint_list']
+        lane_mid_dis = lane_mid_distance(waypoint_list, location)
+        lane_reward = -0.5 * lane_mid_dis
+
+        failure_reward = 0
+        if self._col_is_failure and self._collided:
+            failure_reward -= 5
+        elif self._stuck_is_failure and self._stuck:
+            failure_reward -= 5
+        elif self._off_road_is_failure and self._off_road:
+            failure_reward -= 5
+        elif self._ran_light_is_failure and not self._ignore_light and self._ran_light:
+            failure_reward -= 5
+        elif self._wrong_direction_is_failure and self._wrong_direction:
+            failure_reward -= 5
+
+        failure_reward *= 10
+
+        reward_info = {}
+        total_reward = 0
+        reward_info['goal_reward'] = goal_reward
+        reward_info['distance_reward'] = distance_reward
+        reward_info['speed_reward'] = speed_reward
+        reward_info['angle_reward'] = angle_reward
+        reward_info['steer_reward'] = steer_reward
+        reward_info['lane_reward'] = lane_reward
+        reward_info['failure_reward'] = failure_reward
+
+        reward_dict = {
+            'goal': goal_reward,
+            'distance': distance_reward,
+            'speed': speed_reward,
+            'angle': angle_reward,
+            'steer': steer_reward,
+            'lane': lane_reward,
+            'failure': failure_reward
+        }
+        for rt in self._reward_type:
+            total_reward += reward_dict[rt]
+
+        return total_reward, reward_info
+
+
     def ini_compute_reward(self) -> Tuple[float, Dict]:
         """
         Compute reward for current frame, with details returned in a dict. In short, in contains goal reward,

@@ -6,7 +6,7 @@ import argparse
 import torch
 from easydict import EasyDict
 
-from core.envs import DriveEnvWrapper
+from core.envs import DriveEnvWrapper,BenchmarkEnvWrapper
 from core.utils.others.tcp_helper import parse_carla_tcp
 
 from ding.utils.default_helper import deep_merge_dicts
@@ -14,15 +14,15 @@ from ding.policy import DQNPolicy, PPOPolicy, TD3Policy, SACPolicy, DDPGPolicy
 from ding.utils import set_pkg_seed
 
 # rl model
-from demo.simple_rl.model import DQNRLModel
-from noisy_planning.rl_model import TD3RLModel
+# from demo.simple_rl.model import DQNRLModel
+from noisy_planning.rl_model import TD3RLModel, DQNRLModel, SACRLModel
 from demo.simple_rl.env_wrapper import DiscreteEnvWrapper, ContinuousEnvWrapper
 
 # other module
 from noisy_planning.detector.detection_model_wrapper import DetectionModelWrapper
 from noisy_planning.eval.single_carla_evaluator_with_det import SingleCarlaEvaluatorWithDet
 from noisy_planning.eval.simple_carla_env_new_render import SimpleCarlaEnvNewRender
-
+from noisy_planning.simple_rl_train_with_detection import get_cfg
 from easydict import EasyDict
 
 # eval_config = EasyDict(dict(
@@ -126,7 +126,7 @@ def get_cls(spec):
         # 'ddpg': (DDPGPolicy, DDPGRLModel),
         'td3': (TD3Policy, TD3RLModel),
         # 'ppo': (PPOPolicy, PPORLModel),
-        # 'sac': (SACPolicy, SACRLModel),
+        'sac': (SACPolicy, SACRLModel),
     }[spec]
 
     return policy_cls, model_cls
@@ -135,8 +135,19 @@ def get_cls(spec):
 def main(args, seed=0):
     # args.ckpt_path = "/home/xlju/Project/Model_behavior/training_log/simple-rl_2022-02-05-09-44-39/ckpt/iteration_14000.pth.tar"
     # args.ckpt_path = "/home/xlju/Project/Model_behavior/DI-drive/noisy_planning/tst.pkl"
-    args.ckpt_path = "/home/xlju/Downloads/ckpt_interrupt.pth.tar"
-    cfg = main_config
+    args.ckpt_path = "/home/xlju/Downloads/iteration_12000.pth.tar"
+    # args.ckpt_path = ''
+    cfg = get_cfg(args)
+
+    cfg.env.visualize = dict(
+        type='birdview',
+        save_dir="eval_out_td3_without_det",
+        outputs=['show', 'gif'],
+    )
+    cfg.policy.eval.evaluator.render = True
+
+
+
     eval_epchs = 50
     enable_detection = cfg.env.enable_detector
 
@@ -148,9 +159,9 @@ def main(args, seed=0):
     host, port = tcp_list[0]
 
     if args.policy == 'dqn':
-        carla_env = DriveEnvWrapper(DiscreteEnvWrapper(SimpleCarlaEnvNewRender(cfg.env, host, port)), cfg.env.wrapper)
+        carla_env = BenchmarkEnvWrapper(DiscreteEnvWrapper(SimpleCarlaEnvNewRender(cfg.env, host, port)), cfg.env.wrapper.eval)
     else:
-        carla_env = DriveEnvWrapper(ContinuousEnvWrapper(SimpleCarlaEnvNewRender(cfg.env, host, port)), cfg.env.wrapper)
+        carla_env = BenchmarkEnvWrapper(ContinuousEnvWrapper(SimpleCarlaEnvNewRender(cfg.env, host, port)), cfg.env.wrapper.eval)
     carla_env.seed(seed)
     set_pkg_seed(seed)
 
@@ -187,8 +198,9 @@ def main(args, seed=0):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='simple-rl test')
+    parser.add_argument('-n', '--name', type=str, default='simple-rl-eval', help='experiment name')
     parser.add_argument('-p', '--policy', default='dqn', choices=['dqn', 'ppo', 'td3', 'sac', 'ddpg'], help='RL policy')
     parser.add_argument('-c', '--ckpt-path', default=None, help='model ckpt path')
-    
+    parser.add_argument('-d', '--ding-cfg', default=None, help='DI-engine config path')
     args = parser.parse_args()
     main(args)
