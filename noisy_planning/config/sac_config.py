@@ -120,6 +120,7 @@ sac_config = dict(
             ),
         ),
         collect=dict(
+            tail_len=300,  # only valid when using SampleTailCollector
             pre_sample_num=3000,
             n_sample=3000,
             noise_sigma=0.1,

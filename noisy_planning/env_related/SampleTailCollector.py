@@ -8,11 +8,18 @@ from ding.worker.collector.base_serial_collector import to_tensor_transitions
 from noisy_planning.utils.debug_utils import generate_general_logger
 import logging
 
+
 class SampleTailCollector(SampleSerialCollector):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.logger = generate_general_logger("[Manager]")
         self.logger.setLevel(logging.INFO)
+        self._tail_len = 300
+        if "tail_len" in args[0].keys():
+            self._tail_len = args[0].tail_len
+        self.logger.warning("SampleTailCollector only truncate the tail with max_len={}!".format(self._tail_len))
+
+
 
     def collect(self,
                 n_sample: Optional[int] = None,
@@ -46,7 +53,7 @@ class SampleTailCollector(SampleSerialCollector):
         while collected_sample < n_sample:
             cnt += 1
             if cnt % 100 == 0:
-                self.logger.info("collector cnt={}, sample={}/{}".format(collected_sample, collected_sample, n_sample))
+                self.logger.info("collector cnt={}, sample={}/{}".format(cnt, collected_sample, n_sample))
             with self._timer:
                 # Get current env obs.
                 obs = self._env.ready_obs
@@ -91,7 +98,7 @@ class SampleTailCollector(SampleSerialCollector):
 
                         # only want tail
                         total_samples = len(train_sample)
-                        tail_len_desired = min(200, total_samples)
+                        tail_len_desired = min(self._tail_len, total_samples)
                         train_sample = train_sample[total_samples - tail_len_desired: total_samples]
 
                         return_data.extend(train_sample)
