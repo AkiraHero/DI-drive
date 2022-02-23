@@ -64,36 +64,37 @@ def _create_writer(video_path, height, width, fps=10):
 
 
 class VideoMaker(object):
-    video = None
-    video_path = None
+    def __init__(self):
+        self.video = None
+        self.video_path = None
 
-    @classmethod
-    def init(cls, save_dir='debug', save_path='video'):
-        if cls.video is not None:
-            cls.video.release()
+    # @classmethod
+    def init(self, save_dir='debug', save_path='video'):
+        if self.video is not None:
+            self.video.release()
 
         save_dir = Path(save_dir)
         save_dir.mkdir(exist_ok=True, parents=True)
 
-        cls.video = None
-        cls.video_path = str(save_dir.joinpath(save_path))
+        self.video = None
+        self.video_path = str(save_dir.joinpath(save_path))
 
         #cv2.destroyAllWindows()
 
-    @classmethod
-    def add(cls, image):
+    # @classmethod
+    def add(self, image):
         if image.ndim == 3:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        if cls.video is None:
-            cls.video = _create_writer(cls.video_path, image.shape[0], image.shape[1])
+        if self.video is None:
+            self.video = _create_writer(self.video_path, image.shape[0], image.shape[1])
 
-        cls.video.write(image)
+        self.video.write(image)
 
-    @classmethod
-    def clear(cls):
-        if cls.video is not None:
-            cls.video.release()
+    # @classmethod
+    def clear(self):
+        if self.video is not None:
+            self.video.release()
 
 
 class GifMaker(object):

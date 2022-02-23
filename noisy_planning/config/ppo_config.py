@@ -65,10 +65,15 @@ ppo_config = dict(
         wrong_direction_is_failure=True,
         off_route_is_failure=True,
         off_route_distance=7.5,
+        reward_func="customized_compute_reward",
+        #reward_type=['goal', 'distance', 'speed', 'angle', 'failure', 'lane'],
+        success_distance=2.0,
 
         replay_path='./ppo_video',
         visualize=dict(
             type='birdview',
+            # save_dir="see_collection",
+            # outputs=['video'],
         ),
         manager=dict(
             collect=dict(
@@ -91,8 +96,8 @@ ppo_config = dict(
             )
         ),
         wrapper=dict(
-            collect=dict(suite='train_akira', ),
-            eval=dict(suite='eval_akira', ),
+            collect=dict(suite='train_akira_short_turn_nocar', ),
+            eval=dict(suite='train_akira_short_turn_nocar', ),
         ),
     ),
     server=[
@@ -103,7 +108,7 @@ ppo_config = dict(
         nstep_return=False,
         on_policy=True,
         model=dict(
-            obs_shape=[5, 160, 160],
+            obs_shape=[6, 160, 160],
         ),
         learn=dict(
             epoch_per_collect=5,
@@ -118,7 +123,7 @@ ppo_config = dict(
             learner=dict(
                 hook=dict(
                     log_show_after_iter=1000,
-                    load_ckpt_before_run='',
+                    #load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-shortturn_gamma0.995-2022-02-22-04-47-02/ckpt/ckpt_interrupt.pth.tar',
                     save_ckpt_after_iter=3000,
                 ),
             ),
@@ -127,11 +132,11 @@ ppo_config = dict(
             pre_sample_num=3000,
             n_sample=3000,
             collector=dict(
-                collect_print_freq=1000,
+                collect_print_freq=500,
                 deepcopy_obs=True,
                 transform_obs=True,
             ),
-            discount_factor=0.9,
+            discount_factor=0.995,
             gae_lambda=0.95,
         ),
         eval=dict(
