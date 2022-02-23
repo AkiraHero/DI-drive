@@ -96,8 +96,8 @@ ppo_config = dict(
             )
         ),
         wrapper=dict(
-            collect=dict(suite='train_akira_short_turn_nocar', ),
-            eval=dict(suite='train_akira_short_turn_nocar', ),
+            collect=dict(suite='train_akira_mid_turn_nocar', ),
+            eval=dict(suite='train_akira_mid_turn_nocar', ),
         ),
     ),
     server=[
@@ -141,9 +141,9 @@ ppo_config = dict(
         ),
         eval=dict(
             evaluator=dict(
-                eval_freq=5000,
+                eval_freq=3000,
                 n_episode=5,
-                stop_rate=0.7,
+                stop_rate=1.0,
                 transform_obs=True,
             ),
         ),

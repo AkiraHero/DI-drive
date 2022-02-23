@@ -4,6 +4,7 @@ WEATHER_1 = [1, 3, 6, 8]  # train
 WEATHER_2 = [4, 14]  # test
 WEATHER_3 = [10, 14]
 WEATHER_4 = [1, 8, 14]  # validate
+WEATHER_single = [1]
 
 ALL_SUITES = dict()
 
@@ -41,6 +42,8 @@ def _add(suite_name, *args, **kwargs):
         suite = 'shortturnini'
     elif 'Midturn' in suite_name:
         suite = 'midturnini'
+    elif 'MTnocar' in suite_name:
+        suite = 'midturnini'
     else:
         raise Exception('No suite specified: %s.' % suite_name)
 
@@ -67,12 +70,14 @@ _add('StraightTown04-v1', n_vehicles=0, weathers=WEATHER_1)
 _add('ChangeLaneTown04-v1', n_vehicles=0, weathers=WEATHER_1)
 
 ##############################  Akira Use   #################################
-_add('FullTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_1)
-_add('TurnTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_1)
-_add('FullTown02-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_1)
-_add('ShortturniniTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_1)
-_add('STnocarTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_1)
-_add('MidturniniTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_1)
+_add('FullTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
+_add('TurnTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
+_add('FullTown02-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
+_add('ShortturniniTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
+_add('STnocarTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
+_add('MidturniniTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
+_add('MTnocarTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
+
 #############################################################################
 
 # Train town, test weathers.
@@ -198,6 +203,7 @@ ALL_SUITES_ALIASES = {
     'train_akira_short_turn': ['ShortturniniTown01-akira'],
     'eval_akira': ['FullTown02-akira'],
     'train_akira_mid_turn': ['MidturniniTown01-akira'],
+    'train_akira_mid_turn_nocar': ['MTnocarTown01-akira'],
     ###############################################
 
 

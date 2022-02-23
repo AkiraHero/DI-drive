@@ -16,6 +16,7 @@ core.*
 
 pkg/
 src/
+noisy_planning/output*
 
 ### CVS template
 /CVS/*
