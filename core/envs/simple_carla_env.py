@@ -168,6 +168,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         :Returns:
             Dict: The initial observation.
         """
+        self.logger.info("[Reset paras]{}".format(str(kwargs)))
         if not self._launched_simulator:
             self._init_carla_simulator()
 
