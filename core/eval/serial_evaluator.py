@@ -193,6 +193,8 @@ class SerialEvaluator(BaseEvaluator):
                             'success': t.info['success'],
                             'step': int(t.info['tick']),
                         }
+                        if 'suite_name' in t.info.keys():
+                            result['suite_name'] = t.info['suite_name']
                         episode_count += 1
                         for k, v in result.items():
                             results[k].append(v)
@@ -209,6 +211,17 @@ class SerialEvaluator(BaseEvaluator):
         episode_reward = results['reward']
         envstep_count = np.sum(results['step'])
         success_count = np.sum(results['success'])
+
+        suite_cnt = {}
+        if 'suite_name' in results.keys():
+            for s, suc in zip(results['suite_name'], results['success']):
+                if s not in suite_cnt.keys():
+                    suite_cnt[s] = {'suc': 0, 'total': 0}
+                if suc:
+                    suite_cnt[s]['suc'] += 1
+                suite_cnt[s]['total'] += 1
+        self._total_duration += duration
+
         success_rate = 0 if episode_count == 0 else success_count / episode_count
         info = {
             'train_iter': train_iter,
@@ -220,6 +233,9 @@ class SerialEvaluator(BaseEvaluator):
             'reward_mean': np.mean(episode_reward),
             'reward_std': np.std(episode_reward),
         }
+        for k, v in suite_cnt:
+            info.update({'suite_{}_count'.format(k): v['total'], 'suite_{}_suc_rate'.format(k): v['suc'] / v['total']})
+            
         self._logger.info(self._logger.get_tabulate_vars_hor(info))
         if self._tb_logger is not None:
             for k, v in info.items():
