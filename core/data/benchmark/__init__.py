@@ -44,6 +44,12 @@ def _add(suite_name, *args, **kwargs):
         suite = 'midturnini'
     elif 'MTnocar' in suite_name:
         suite = 'midturnini'
+    elif 'gostraight' in suite_name:
+        suite = 'gostraight'
+    elif 'leftturn' in suite_name:
+        suite = 'leftturn'
+    elif 'rightturn' in suite_name:
+        suite = 'rightturn'
     else:
         raise Exception('No suite specified: %s.' % suite_name)
 
@@ -77,6 +83,10 @@ _add('ShortturniniTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATH
 _add('STnocarTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
 _add('MidturniniTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
 _add('MTnocarTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
+
+_add('gostraightTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
+_add('leftturnTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
+_add('rightturnTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
 
 #############################################################################
 
@@ -204,6 +214,7 @@ ALL_SUITES_ALIASES = {
     'eval_akira': ['FullTown02-akira'],
     'train_akira_mid_turn': ['MidturniniTown01-akira'],
     'train_akira_mid_turn_nocar': ['MTnocarTown01-akira'],
+    'train_akira_turn_group' : ['leftturnTown01-akira', 'rightturnTown01-akira', 'gostraightTown01-akira'],
     ###############################################
 
 

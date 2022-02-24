@@ -133,7 +133,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._last_canvas = None
         self.logger.warning("Using reward function: {}".format(self._cfg.reward_func))
         self._reward_func = self.__getattribute__(self._cfg.reward_func)
-        # self.weird_bug = False
+        self._suite_name = None
 
     def _init_carla_simulator(self) -> None:
         if not self._use_local_carla:
@@ -192,6 +192,8 @@ class SimpleCarlaEnv(BaseDriveEnv):
             self._col_is_failure = kwargs['col_is_failure']
         if 'stuck_is_failure' in kwargs:
             self._stuck_is_failure = kwargs['stuck_is_failure']
+        if 'suite_name' in kwargs:
+            self._suite_name = kwargs['suite_name']
         self._simulator_databuffer.clear()
         self._collided = False
         self._stuck = False
@@ -267,6 +269,10 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 'success': self.is_success(),
             }
         )
+        if self._suite_name:
+            info.update({
+                'suite_name': self._suite_name
+            })
         # self.render()
 
         done = self.is_success() or self.is_failure()

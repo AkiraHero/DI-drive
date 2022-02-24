@@ -174,6 +174,7 @@ class BenchmarkEnvWrapper(DriveEnvWrapper):
                 param['end'] = end
                 param['weather'] = weather
                 param['col_is_failure'] = True
+                param['suite_name'] = suite
                 self._reset_param_list.append(param)
         self._reset_param_index = 0
 
