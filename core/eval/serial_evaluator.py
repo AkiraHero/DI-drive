@@ -220,7 +220,7 @@ class SerialEvaluator(BaseEvaluator):
                 if suc:
                     suite_cnt[s]['suc'] += 1
                 suite_cnt[s]['total'] += 1
-        self._total_duration += duration
+        # self._total_duration += duration
 
         success_rate = 0 if episode_count == 0 else success_count / episode_count
         info = {
@@ -230,12 +230,17 @@ class SerialEvaluator(BaseEvaluator):
             'evaluate_time': duration,
             'avg_time_per_episode': duration / n_episode,
             'success_rate': success_rate,
-            'reward_mean': np.mean(episode_reward),
-            'reward_std': np.std(episode_reward),
         }
-        for k, v in suite_cnt:
+        if len(episode_reward):
+            info.update(
+                {
+                    'reward_mean': np.mean(episode_reward),
+                    'reward_std': np.std(episode_reward),
+                }
+            )
+        for k, v in suite_cnt.items():
             info.update({'suite_{}_count'.format(k): v['total'], 'suite_{}_suc_rate'.format(k): v['suc'] / v['total']})
-            
+
         self._logger.info(self._logger.get_tabulate_vars_hor(info))
         if self._tb_logger is not None:
             for k, v in info.items():

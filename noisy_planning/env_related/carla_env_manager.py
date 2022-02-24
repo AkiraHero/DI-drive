@@ -243,6 +243,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                                 obs = self._obs_buffers[env_id].get()
                             self._ready_obs[env_id] = obs
                             self._env_reset_try_num[env_id] = 0
+                            self.logger.info("[RESET] Env={}, reset_params={}".format(env_id, str(reset_paras)))
                             return True
                         else:
                             if verbose:
