@@ -47,6 +47,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         reward_type=['goal', 'distance', 'speed', 'angle', 'failure'],
         # reward value if success
         success_reward=10,
+        failure_reward=-5,
         # failure judgement
         col_is_failure=False,
         stuck_is_failure=False,
@@ -114,6 +115,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         assert set(self._reward_type).issubset(self.reward_type), set(self._reward_type)
         self._success_distance = self._cfg.success_distance
         self._success_reward = self._cfg.success_reward
+        self._failure_reward = self._cfg.failure_reward
         self._max_speed = self._cfg.max_speed
         self._collided = False
         self._stuck = False
@@ -131,7 +133,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._simulator_databuffer = dict()
         self._visualizer = None
         self._last_canvas = None
-        self.logger.warning("Using reward function: {}".format(self._cfg.reward_func))
+        self.logger.warning("Using reward function: {}, suc_reward={}, fail_reward={}".format(self._cfg.reward_func, self._success_reward, self._failure_reward))
         self._reward_func = self.__getattribute__(self._cfg.reward_func)
         self._suite_name = None
 
@@ -168,7 +170,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         :Returns:
             Dict: The initial observation.
         """
-        self.logger.info("[Reset paras]{}".format(str(kwargs)))
+        self.logger.error("[Reset paras]{}".format(str(kwargs)))
         if not self._launched_simulator:
             self._init_carla_simulator()
 
@@ -546,17 +548,17 @@ class SimpleCarlaEnv(BaseDriveEnv):
 
         failure_reward = 0
         if self._col_is_failure and self._collided:
-            failure_reward -= 5
+            failure_reward += self._failure_reward
         elif self._stuck_is_failure and self._stuck:
-            failure_reward -= 5
+            failure_reward += self._failure_reward
         elif self._off_road_is_failure and self._off_road:
-            failure_reward -= 5
+            failure_reward += self._failure_reward
         elif self._ran_light_is_failure and not self._ignore_light and self._ran_light:
-            failure_reward -= 5
+            failure_reward += self._failure_reward
         elif self._wrong_direction_is_failure and self._wrong_direction:
-            failure_reward -= 5
+            failure_reward += self._failure_reward
         # add weight to failure reward
-        failure_reward *= 50
+        #failure_reward *= 50
 
         reward_info = {}
         total_reward = 0

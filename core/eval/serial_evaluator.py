@@ -3,6 +3,7 @@ import numpy as np
 from collections import defaultdict
 import torch
 from typing import Dict, Any, List, Optional, Callable, Tuple
+import pickle
 
 from .base_evaluator import BaseEvaluator
 from core.data.benchmark import ALL_SUITES
@@ -47,6 +48,7 @@ class SerialEvaluator(BaseEvaluator):
         stop_rate=1,
         # max steps to evaluate to avoid too long sequences
         env_max_steps=2000,
+        eval_once = False
     )
 
     def __init__(
@@ -66,6 +68,11 @@ class SerialEvaluator(BaseEvaluator):
 
         self._last_eval_iter = 0
         self._max_success_rate = 0
+        self._eval_once = self._cfg.eval_once
+        self._eval_once_all_result = []
+        self._eval_result_file_name = os.path.join(exp_name, "eval_result.pickle")
+        if self._eval_once:
+            self._logger.error("[EVAL]==================================Using eval once===========================================")
 
     @property
     def env(self) -> BaseEnvManager:
@@ -141,6 +148,7 @@ class SerialEvaluator(BaseEvaluator):
             policy_kwargs = dict()
         if n_episode is None:
             n_episode = self._default_n_episode
+        self._logger.error("[EVAL]we gonna to eval on {} episodes".format(n_episode))
         assert n_episode is not None, "please indicate eval n_episode"
         self._env_manager.reset()
         self._policy.reset([i for i in range(self._env_num)])
@@ -150,6 +158,7 @@ class SerialEvaluator(BaseEvaluator):
 
         env_steps = {}
         with self._timer:
+            total_step = 0
             while episode_count < n_episode:
                 obs = self._env_manager.ready_obs
                 if self._transform_obs:
@@ -157,9 +166,16 @@ class SerialEvaluator(BaseEvaluator):
                 policy_output = self._policy.forward(obs, **policy_kwargs)
                 actions = {env_id: output['action'] for env_id, output in policy_output.items()}
                 timesteps = self._env_manager.step(actions)
+                total_step += 1
+                if total_step % 200 == 0:
+                    self._logger.error("[EVAL]now is step {} of the env manager, cnt:{}/{}!".format(total_step, episode_count, n_episode))
                 for env_id, t in timesteps.items():
                     if env_id not in env_steps.keys():
                         env_steps[env_id] = 0
+                    if t.info.get('abnormal', False):
+                        self._policy.reset([env_id])
+                        env_steps[env_id] = 0
+                        continue
                     if t.info['stuck']:
                         self._policy.reset([env_id])
                         env_steps[env_id] = 0
@@ -181,10 +197,7 @@ class SerialEvaluator(BaseEvaluator):
                         self._policy.reset([env_id])
                         env_steps[env_id] = 0
                         continue
-                    if t.info.get('abnormal', False):
-                        self._policy.reset([env_id])
-                        env_steps[env_id] = 0
-                        continue
+
                     if t.done:
                         self._policy.reset([env_id])
                         env_steps[env_id] = 0
@@ -196,6 +209,8 @@ class SerialEvaluator(BaseEvaluator):
                         if 'suite_name' in t.info.keys():
                             result['suite_name'] = t.info['suite_name']
                         episode_count += 1
+                        if self._eval_once:
+                            self._eval_once_all_result.append(result)
                         for k, v in result.items():
                             results[k].append(v)
                         self._logger.info(
@@ -206,6 +221,12 @@ class SerialEvaluator(BaseEvaluator):
                     env_steps[env_id] += 1
                 if self._env_manager.done:
                     break
+        if self._eval_once:
+            res_file_name = self._eval_result_file_name
+            with open(res_file_name, 'wb') as f:
+                pickle.dump(self._eval_once_all_result, f)
+                self._logger.error("[EVAL]Dumped eval result:" + res_file_name)
+                self._eval_once_all_result.clear()
 
         duration = self._timer.value
         episode_reward = results['reward']
@@ -262,4 +283,7 @@ class SerialEvaluator(BaseEvaluator):
                 "Current success rate: {} is greater than stop rate: {}".format(success_rate, self._stop_rate) +
                 ", so the training is converged."
             )
+        print("===================================")
+        print(str(info))
+        print("===================================")
         return stop_flag, success_rate

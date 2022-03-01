@@ -76,9 +76,9 @@ _add('StraightTown04-v1', n_vehicles=0, weathers=WEATHER_1)
 _add('ChangeLaneTown04-v1', n_vehicles=0, weathers=WEATHER_1)
 
 ##############################  Akira Use   #################################
-_add('FullTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
+_add('FullTown01-akira', n_vehicles=80, n_pedestrians=80, weathers=WEATHER_single)
 _add('TurnTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
-_add('FullTown02-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
+_add('FullTown02-akira', n_vehicles=80, n_pedestrians=80, weathers=WEATHER_single)
 _add('ShortturniniTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
 _add('STnocarTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
 _add('MidturniniTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
@@ -208,13 +208,15 @@ ALL_SUITES_ALIASES = {
     'train_ft': ['FullTown01-v1', 'TurnTown01-v1'],
 
     ##############  Akira Use   ###################
-    'train_akira': ['FullTown01-akira'],
+    'train_akira': ['FullTown01-akira', 'MidturniniTown01-akira', 'FullTown01-akira'],
     'train_akira_short_turn_nocar': ['STnocarTown01-akira'],
     'train_akira_short_turn': ['ShortturniniTown01-akira'],
     'eval_akira': ['FullTown02-akira'],
+    'eval_once': ['FullTown01-akira', 'FullTown02-akira', 'MidturniniTown01-akira'],
     'train_akira_mid_turn': ['MidturniniTown01-akira'],
     'train_akira_mid_turn_nocar': ['MTnocarTown01-akira'],
     'train_akira_turn_group' : ['leftturnTown01-akira', 'rightturnTown01-akira', 'gostraightTown01-akira'],
+    ''
     ###############################################
 
 

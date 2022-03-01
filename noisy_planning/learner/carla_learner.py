@@ -80,6 +80,10 @@ class CarlaLearner(BaseLearner):
         self._evaluator = None
         self._epsilon_greedy = None
         self._policy_name = None
+        self._only_evaluation_once = False
+
+    def set_eval_mode(self):
+        self._only_evaluation_once = True
 
     def set_policy_name(self, n):
         self._policy_name = n
@@ -98,8 +102,9 @@ class CarlaLearner(BaseLearner):
         self._replay_buffer = buf
 
     def check_element(self):
-        assert self._collector is not None
-        assert self._collector_config is not None
+        if not self._only_evaluation_once:
+            assert self._collector is not None
+            assert self._collector_config is not None
         # assert self._replay_buffer is not None
         assert self._policy_name is not None
 
@@ -119,6 +124,12 @@ class CarlaLearner(BaseLearner):
         self._learner_done = False
         # before run hook
         self.call_hook('before_run')
+
+        self.logger.error("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh")
+        if self._only_evaluation_once:
+            self.logger.error("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh")
+            stop, rate = self._evaluator.eval(None, 0, 0)
+            return
 
         # learning process
         if self._policy_name != 'ppo':

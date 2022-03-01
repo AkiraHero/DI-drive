@@ -103,6 +103,8 @@ def main(args, seed=0):
     Config
     '''
     enable_eval = True
+    only_eval = True
+
     cfg = get_cfg(args)
     tcp_list = parse_carla_tcp(cfg.server)
     collector_env_num, evaluator_env_num = cfg.env.collector_env_num, cfg.env.evaluator_env_num
@@ -134,6 +136,8 @@ def main(args, seed=0):
         epsilon_greedy = get_epsilon_greedy_fn(eps_cfg.start, eps_cfg.end, eps_cfg.decay, eps_cfg.type)
         learner.set_epsilon_greedy(epsilon_greedy)
     tb_logger = learner.tb_logger
+    if only_eval:
+        learner.set_eval_mode()
 
 
     '''
@@ -162,27 +166,28 @@ def main(args, seed=0):
     # if detection not enabled, forbid lidar collection
     if not cfg.env.enable_detector:
         cfg.env.simulator.obs = [i for i in cfg.env.simulator.obs if i['type'] != 'lidar']
-
-    collector_env = CarlaSyncSubprocessEnvManager(
-        env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.collect, *tcp_list[i]) for i in range(collector_env_num)],
-        cfg=cfg.env.manager.collect,
-        detector=detection_model,
-        detection_max_batch_size=detection_max_batch_size,
-        bev_obs_config=obs_bev_config,
-        env_ports=[tcp_list[i] for i in range(collector_env_num)],
-    )
-    collector_env.seed(seed)
-    if args.use_new_collector:
-        logging.warning("You choose to use traj tail!!!")
-        collector_cls = SampleTailCollector
-    else:
-        collector_cls = SampleSerialCollector
-    collector = collector_cls(cfg.policy.collect.collector,
-                                      collector_env,
-                                      policy.collect_mode,
-                                      tb_logger,
-                                      exp_name=cfg.exp_name)
-    learner.set_collector(collector, cfg.policy.collect)
+    collector = None
+    if not only_eval:
+        collector_env = CarlaSyncSubprocessEnvManager(
+            env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.collect, *tcp_list[i]) for i in range(collector_env_num)],
+            cfg=cfg.env.manager.collect,
+            detector=detection_model,
+            detection_max_batch_size=detection_max_batch_size,
+            bev_obs_config=obs_bev_config,
+            env_ports=[tcp_list[i] for i in range(collector_env_num)],
+        )
+        collector_env.seed(seed)
+        if args.use_new_collector:
+            logging.warning("You choose to use traj tail!!!")
+            collector_cls = SampleTailCollector
+        else:
+            collector_cls = SampleSerialCollector
+        collector = collector_cls(cfg.policy.collect.collector,
+                                        collector_env,
+                                        policy.collect_mode,
+                                        tb_logger,
+                                        exp_name=cfg.exp_name)
+        learner.set_collector(collector, cfg.policy.collect)
 
     '''
     Validation
@@ -232,7 +237,8 @@ def main(args, seed=0):
     '''
     Closing
     '''
-    collector.close()
+    if collector:
+        collector.close()
     if evaluator:
         evaluator.close()
     learner.close()

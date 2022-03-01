@@ -190,7 +190,7 @@ class BenchmarkEnvWrapper(DriveEnvWrapper):
             self._param = np.random.choice(self._reset_param_list)
         elif self._mode == 'order':
             self._param = self._reset_param_list[self._reset_param_index]
-            self._reset_param_index + 1
+            self._reset_param_index += 1
             if self._reset_param_index >= len(self._reset_param_list):
                 self._reset_param_index = 0
         return super().reset(**self._param)

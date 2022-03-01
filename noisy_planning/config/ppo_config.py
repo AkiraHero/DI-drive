@@ -3,11 +3,11 @@ from easydict import EasyDict
 ppo_config = dict(
     exp_name='ppo21_bev32_lr1e4_bs128_ns3000_update5_train_ft',
     env=dict(
-        collector_env_num=15,
-        evaluator_env_num=1,
+        collector_env_num=0,
+        evaluator_env_num=16,
         simulator=dict(
             town='Town01',
-            delta_seconds=0.05,
+            delta_seconds=0.1,
             disable_two_wheels=True,
             verbose=False,
             waypoint_num=32,
@@ -28,8 +28,8 @@ ppo_config = dict(
                     type='lidar',
                     channels=64,
                     range=32,
-                    points_per_second=1280000,
-                    rotation_frequency=20,
+                    points_per_second=640000,
+                    rotation_frequency=10,
                     upper_fov=10.0,
                     lower_fov=-45.0,
                     position=[0, 0.0, 1.6],
@@ -38,7 +38,7 @@ ppo_config = dict(
                 ),
             ),
         ),
-        enable_detector=False,
+        enable_detector=True,
         detector=dict(
             model_repo="openpcdet",
             model_name="pointpillar",
@@ -68,7 +68,8 @@ ppo_config = dict(
         reward_func="customized_compute_reward",
         #reward_type=['goal', 'distance', 'speed', 'angle', 'failure', 'lane'],
         success_distance=2.0,
-
+        success_reward=300,
+        failure_reward=-250,
         replay_path='./ppo_video',
         visualize=dict(
             type='birdview',
@@ -96,12 +97,12 @@ ppo_config = dict(
             )
         ),
         wrapper=dict(
-            collect=dict(suite='train_akira_mid_turn_nocar', ),
-            eval=dict(suite='train_akira_mid_turn_nocar', ),
+            collect=dict(suite='train_akira', ),
+            eval=dict(suite='eval_once', ),
         ),
     ),
     server=[
-        dict(carla_host='localhost', carla_ports=[9000, 9032, 2]),
+        dict(carla_host='localhost', carla_ports=[9000, 9034, 2]),
     ],
     policy=dict(
         cuda=True,
@@ -123,7 +124,7 @@ ppo_config = dict(
             learner=dict(
                 hook=dict(
                     log_show_after_iter=1000,
-                    #load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-shortturn_gamma0.995-2022-02-22-04-47-02/ckpt/ckpt_interrupt.pth.tar',
+                    load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-tst_with_car_nodet-2022-02-26-14-15-50/ckpt/iteration_69000.pth.tar',
                     save_ckpt_after_iter=3000,
                 ),
             ),
@@ -142,9 +143,10 @@ ppo_config = dict(
         eval=dict(
             evaluator=dict(
                 eval_freq=3000,
-                n_episode=5,
+                n_episode=500,
                 stop_rate=1.0,
                 transform_obs=True,
+                eval_once=True
             ),
         ),
     ),

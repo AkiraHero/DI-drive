@@ -170,10 +170,10 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                         if 'detected' not in v.keys() or v['detected'] != 1.0:
                             data_list.append(v)
             if len(data_list):
-                timer.st_point("det_step")
-                self.logger.warning("perform det in step with list len={}".format(len(data_list)))
+                # timer.st_point("det_step")
+                # self.logger.warning("perform det in step with list len={}".format(len(data_list)))
                 self.insert_detection_result(data_list)
-                timer.ed_point("det_step")
+                # timer.ed_point("det_step")
         ############################## perform detection ##############################
 
         for env_id, timestep in timesteps.items():
