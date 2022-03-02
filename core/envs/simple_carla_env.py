@@ -547,18 +547,21 @@ class SimpleCarlaEnv(BaseDriveEnv):
         lane_reward = lrw
 
         failure_reward = 0
-        if self._col_is_failure and self._collided:
-            failure_reward += self._failure_reward
-        elif self._stuck_is_failure and self._stuck:
-            failure_reward += self._failure_reward
-        elif self._off_road_is_failure and self._off_road:
-            failure_reward += self._failure_reward
-        elif self._ran_light_is_failure and not self._ignore_light and self._ran_light:
-            failure_reward += self._failure_reward
-        elif self._wrong_direction_is_failure and self._wrong_direction:
-            failure_reward += self._failure_reward
+        # if self._col_is_failure and self._collided:
+        #     failure_reward += self._failure_reward
+        # elif self._stuck_is_failure and self._stuck:
+        #     failure_reward += self._failure_reward
+        # elif self._off_road_is_failure and self._off_road:
+        #     failure_reward += self._failure_reward
+        # elif self._ran_light_is_failure and not self._ignore_light and self._ran_light:
+        #     failure_reward += self._failure_reward
+        # elif self._wrong_direction_is_failure and self._wrong_direction:
+        #     failure_reward += self._failure_reward
         # add weight to failure reward
         #failure_reward *= 50
+
+        if self.is_failure():
+            failure_reward = self._failure_reward
 
         reward_info = {}
         total_reward = 0
