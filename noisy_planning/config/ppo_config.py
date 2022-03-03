@@ -9,6 +9,7 @@ ppo_config = dict(
         evaluator_env_num=0,
         simulator=dict(
             town='Town01',
+            spawn_manner="random",  # random, near
             delta_seconds=0.1,
             disable_two_wheels=True,
             verbose=False,
@@ -99,8 +100,8 @@ ppo_config = dict(
             )
         ),
         wrapper=dict(
-            collect=dict(suite='train_akira_turn_group', ),
-            eval=dict(suite='train_akira_turn_group', ),
+            collect=dict(suite='train_akira_turn_group', suite_n_vehicles=50, suite_n_pedestrians=50, ),
+            eval=dict(suite='train_akira_turn_group', suite_n_vehicles=50, suite_n_pedestrians=50, ),
         ),
     ),
     server=[
