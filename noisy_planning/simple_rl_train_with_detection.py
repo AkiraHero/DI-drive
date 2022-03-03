@@ -103,9 +103,13 @@ def main(args, seed=0):
     Config
     '''
     enable_eval = True
-    only_eval = True
+    only_eval = False
 
     cfg = get_cfg(args)
+    if 'enable_eval' in cfg.keys():
+        enable_eval = cfg.enable_eval
+    if 'only_eval' in cfg.keys():
+        only_eval = cfg.only_eval
     tcp_list = parse_carla_tcp(cfg.server)
     collector_env_num, evaluator_env_num = cfg.env.collector_env_num, cfg.env.evaluator_env_num
     assert len(tcp_list) >= collector_env_num + evaluator_env_num, \
