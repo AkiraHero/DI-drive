@@ -84,9 +84,9 @@ _add('STnocarTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_sing
 _add('MidturniniTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
 _add('MTnocarTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
 
-_add('gostraightTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
-_add('leftturnTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
-_add('rightturnTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
+_add('gostraightTown01-akira', n_vehicles=80, n_pedestrians=80, weathers=WEATHER_single)
+_add('leftturnTown01-akira', n_vehicles=80, n_pedestrians=80, weathers=WEATHER_single)
+_add('rightturnTown01-akira', n_vehicles=80, n_pedestrians=80, weathers=WEATHER_single)
 
 #############################################################################
 
