@@ -48,6 +48,8 @@ def _add(suite_name, *args, **kwargs):
         suite = 'gostraight'
     elif 'leftturn' in suite_name:
         suite = 'leftturn'
+    elif 'left2turn' in suite_name:
+        suite = 'left2turn'
     elif 'rightturn' in suite_name:
         suite = 'rightturn'
     else:
@@ -80,13 +82,21 @@ _add('FullTown01-akira', n_vehicles=80, n_pedestrians=80, weathers=WEATHER_singl
 _add('TurnTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
 _add('FullTown02-akira', n_vehicles=80, n_pedestrians=80, weathers=WEATHER_single)
 _add('ShortturniniTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
-_add('STnocarTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
+_add('STnocarTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
 _add('MidturniniTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
-_add('MTnocarTown01-akira', n_vehicles=0, n_pedestrians=0, weathers=WEATHER_single)
+_add('MTnocarTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
 
+<<<<<<< Updated upstream
 _add('gostraightTown01-akira', n_vehicles=80, n_pedestrians=80, weathers=WEATHER_single)
 _add('leftturnTown01-akira', n_vehicles=80, n_pedestrians=80, weathers=WEATHER_single)
 _add('rightturnTown01-akira', n_vehicles=80, n_pedestrians=80, weathers=WEATHER_single)
+=======
+_add('gostraightTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
+_add('leftturnTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
+_add('rightturnTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
+
+_add('left2turnTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
+>>>>>>> Stashed changes
 
 #############################################################################
 
@@ -216,7 +226,7 @@ ALL_SUITES_ALIASES = {
     'train_akira_mid_turn': ['MidturniniTown01-akira'],
     'train_akira_mid_turn_nocar': ['MTnocarTown01-akira'],
     'train_akira_turn_group' : ['leftturnTown01-akira', 'rightturnTown01-akira', 'gostraightTown01-akira'],
-    ''
+    'left2turn': ['left2turnTown01-akira'],
     ###############################################
 
 

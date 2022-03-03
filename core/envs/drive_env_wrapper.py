@@ -162,12 +162,16 @@ class BenchmarkEnvWrapper(DriveEnvWrapper):
 
         self._reset_param_list = []
         for suite in suite_list:
-            args, kwargs = ALL_SUITES[suite]
+            args, suite_paras = ALL_SUITES[suite]
             assert len(args) == 0
-            reset_params = kwargs.copy()
+            reset_params = suite_paras.copy()
             poses_txt = reset_params.pop('poses_txt')
             weathers = reset_params.pop('weathers')
             pose_pairs = read_pose_txt(benchmark_dir, poses_txt)
+            if "suite_n_vehicles" in cfg.keys():
+                reset_params['n_vehicles'] = cfg['suite_n_vehicles']
+            if "suite_n_pedestrians" in cfg.keys():
+                reset_params['n_pedestrians'] = cfg['suite_n_pedestrians']
             for (start, end), weather in product(pose_pairs, weathers):
                 param = reset_params.copy()
                 param['start'] = start
