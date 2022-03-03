@@ -112,6 +112,7 @@ class CarlaSimulator(BaseSimulator):
         aug=None,
         verbose=True,
         debug=False,
+        spawn_manner="random",  # random, near
     )
 
     def __init__(
@@ -174,6 +175,9 @@ class CarlaSimulator(BaseSimulator):
         self._planner_cfg = self._cfg.planner
         self._camera_aug_cfg = self._cfg.aug
         self._verbose = self._cfg.verbose
+        self._spawn_manner = self._cfg.spawn_manner
+        self._support_spawn_manner = ['random', 'near']
+        assert self._spawn_manner in self._support_spawn_manner
 
         self._tick = 0
         self._timestamp = 0
@@ -192,6 +196,10 @@ class CarlaSimulator(BaseSimulator):
         self._planner = None
         self._collision_sensor = None
         self._traffic_light_helper = None
+
+        self._start_spawn_point_inx = None
+        self._end_spawn_point_inx = None
+
 
         self._actor_map = defaultdict(list)
         self._debug = self._cfg.debug
@@ -229,6 +237,8 @@ class CarlaSimulator(BaseSimulator):
 
         :Optional arguments: town, weather, n_vehicles, n_pedestrians, autopilot, disable_two_wheels
         """
+        self._start_spawn_point_inx = start
+        self._end_spawn_point_inx = end
         self._apply_world_setting(**kwargs)
         self._set_town(self._town_name)
         self._set_weather(self._weather)
@@ -299,12 +309,33 @@ class CarlaSimulator(BaseSimulator):
         self._start_location = start_waypoint.location
         self._hero_actor = CarlaDataProvider.request_new_actor(VEHICLE_NAME, start_waypoint, ROLE_NAME)
 
+    def _sort_spawn_point(self, points: list, st_pt_inx, ed_pt_inx=None):
+        # use Manhattan distance (to do use planner distance, which can be calculated and saved before
+        st_loc = CarlaDataProvider.get_spawn_point(st_pt_inx).location
+        sort_func = lambda pt: abs(pt.location.x - st_loc.x) + abs(pt.location.y - st_loc.y)
+        ed_loc = None
+        if ed_pt_inx:
+            ed_loc = CarlaDataProvider.get_spawn_point(ed_pt_inx).location
+            sort_func = lambda pt: abs(pt.location.x - st_loc.x) + abs(pt.location.y - st_loc.y)\
+                                   + abs(pt.location.x - ed_loc.x) + abs(pt.location.y - ed_loc.y)
+
+        points.sort(key=sort_func)
+        pass
+        # todo: if crowded, add random swap
+
+
     def _spawn_vehicles(self) -> None:
         blueprints = self._blueprints.filter('vehicle.*')
         if self._disable_two_wheels:
             blueprints = [x for x in blueprints if int(x.get_attribute('number_of_wheels')) == 4]
         spawn_points = self._map.get_spawn_points()
-        random.shuffle(spawn_points)
+        if self._spawn_manner == 'random':
+            random.shuffle(spawn_points)
+        elif self._spawn_manner == 'near':
+            # sort the spawn point near the st / end
+            self._sort_spawn_point(spawn_points, self._start_spawn_point_inx, self._end_spawn_point_inx)
+        else:
+            raise NotImplementedError
 
         SpawnActor = carla.command.SpawnActor
         SetAutopilot = carla.command.SetAutopilot
@@ -351,13 +382,24 @@ class CarlaSimulator(BaseSimulator):
             _walker_speed = []
 
             # 1. take all the random locations to spawn
-            for i in range(self._n_pedestrians - peds_spawned):
+            while len(spawn_points) < self._n_pedestrians - peds_spawned:
                 spawn_point = carla.Transform()
                 loc = self._world.get_random_location_from_navigation()
-
                 if loc is not None:
                     spawn_point.location = loc
-                    spawn_points.append(spawn_point)
+                    if self._spawn_manner == 'random':
+                        spawn_points.append(spawn_point)
+                    elif self._spawn_manner == 'near':
+                        st_loc = CarlaDataProvider.get_spawn_point(self._start_spawn_point_inx).location
+                        ed_loc = CarlaDataProvider.get_spawn_point(self._end_spawn_point_inx).location
+                        radius = (abs(st_loc.x - ed_loc.x) + abs(st_loc.y - ed_loc.y)) / 2
+                        dis = min(abs(spawn_point.location.x - st_loc.x) + abs(spawn_point.location.y - st_loc.y),
+                                  abs(spawn_point.location.x - ed_loc.x) + abs(spawn_point.location.y - ed_loc.y))
+                        if dis < radius:
+                            spawn_points.append(spawn_point)
+                    else:
+                        raise NotImplementedError
+
             # 2. spawn the walker object
             batch = []
             for spawn_point in spawn_points:
