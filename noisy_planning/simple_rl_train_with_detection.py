@@ -13,8 +13,10 @@ from easydict import EasyDict
 from ding.envs import BaseEnvManager
 from noisy_planning.env_related.carla_env_manager import CarlaSyncSubprocessEnvManager
 from ding.policy import DQNPolicy, PPOPolicy, TD3Policy, SACPolicy, DDPGPolicy
-from ding.worker import BaseLearner, SampleSerialCollector, AdvancedReplayBuffer, NaiveReplayBuffer
-from noisy_planning.env_related.SampleTailCollector import SampleTailCollector
+from ding.worker import BaseLearner, AdvancedReplayBuffer, NaiveReplayBuffer
+from noisy_planning.env_related.sample_tail_collector import SampleTailCollector
+from noisy_planning.env_related.sample_serial_collector import SampleSerialCollector
+
 from ding.utils import set_pkg_seed
 from ding.rl_utils import get_epsilon_greedy_fn
 
