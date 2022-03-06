@@ -1,9 +1,10 @@
 import logging
-
+import signal
 import numpy as np
 import cv2
 import struct
 import time
+from typing import Callable
 
 # import open3d as od
 # vis = od.visualization.Visualizer()
@@ -80,4 +81,49 @@ def generate_general_logger(logger_name):
     logger.setLevel(logging.WARNING)
     return logger
 
+
+def auto_signal_handler(handle_func_name: str) -> Callable:
+    def _auto_signal_handler_(func: Callable) -> Callable:
+        r"""
+        Overview:
+            Create a wrapper to wrap function, and the wrapper will call the save_checkpoint method
+            whenever an exception happens.
+        Arguments:
+            - func(:obj:`Callable`): the function to be wrapped
+        Returns:
+            - wrapper (:obj:`Callable`): the wrapped function
+        """
+        dead_signals = ['SIGILL', 'SIGINT', 'SIGKILL', 'SIGQUIT', 'SIGSEGV', 'SIGSTOP', 'SIGTERM', 'SIGBUS']
+        all_signals = dead_signals + ['SIGUSR1']
+
+        def register_signal_handler(handler):
+            valid_sig = []
+            invalid_sig = []
+            for sig in all_signals:
+                try:
+                    sig = getattr(signal, sig)
+                    signal.signal(sig, handler)
+                    valid_sig.append(sig)
+                except Exception:
+                    invalid_sig.append(sig)
+            # print('valid sig: ({})\ninvalid sig: ({})'.format(valid_sig, invalid_sig))
+
+        def wrapper(*args, **kwargs):
+            handle = args[0]
+            assert (hasattr(handle, handle_func_name))
+
+            def signal_handler(signal_num, frame):
+                sig = signal.Signals(signal_num)
+                # logger.info("SIGNAL: {}({})".format(sig.name, sig.value))
+                handle.__getattribute__(handle_func_name)()
+                sys.exit(1)
+            register_signal_handler(signal_handler)
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                handle.save_eval_result()
+                traceback.print_exc()
+
+        return wrapper
+    return _auto_signal_handler_
 

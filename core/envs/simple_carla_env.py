@@ -136,6 +136,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self.logger.warning("Using reward function: {}, suc_reward={}, fail_reward={}".format(self._cfg.reward_func, self._success_reward, self._failure_reward))
         self._reward_func = self.__getattribute__(self._cfg.reward_func)
         self._suite_name = None
+        self._failure_reason = None
 
     def _init_carla_simulator(self) -> None:
         if not self._use_local_carla:
@@ -210,6 +211,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._last_steer = 0
         self._last_distance = None
         self._timeout = self._simulator.end_timeout
+        self._failure_reason = None
 
         return self.get_observations()
 
@@ -259,7 +261,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._reward, reward_info = self._reward_func()
 
         info = self._simulator.get_information()
-        info.update(reward_info)
+        info.update({'reward_info': reward_info})
         info.update(
             {
                 'collided': self._collided,
@@ -270,6 +272,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 'off_route': self._off_route,
                 'timeout': self._tick > self._timeout,
                 'success': self.is_success(),
+                'failure_reason': self._failure_reason,
             }
         )
         if self._suite_name:
@@ -329,20 +332,27 @@ class SimpleCarlaEnv(BaseDriveEnv):
             bool: Whether failure.
         """
         if self._stuck_is_failure and self._stuck:
+            self._failure_reason = 'stuck'
             return True
         if self._col_is_failure and self._collided:
+            self._failure_reason = 'collided'
             return True
         if self._ran_light_is_failure and self._ran_light:
+            self._failure_reason = 'ran_light'
             return True
         if self._off_road_is_failure and self._off_road:
+            self._failure_reason = 'off_road'
             return True
         if self._wrong_direction_is_failure and self._wrong_direction:
+            self._failure_reason = 'wrong_direction'
             return True
         if self._off_route_is_failure and self._off_route:
+            self._failure_reason = 'off_route'
             return True
         if self._tick > self._timeout:
+            self._failure_reason = 'timeout'
             return True
-
+        self._failure_reason = None
         return False
 
     def get_observations(self) -> Dict:
@@ -582,10 +592,11 @@ class SimpleCarlaEnv(BaseDriveEnv):
             'lane': lane_reward,
             'failure': failure_reward
         }
+        enabled_rw_info = {rt: reward_dict[rt] for rt in self._reward_type}
         for rt in self._reward_type:
             total_reward += reward_dict[rt]
 
-        return total_reward, reward_info
+        return total_reward, enabled_rw_info
     
 
     def ini_compute_reward(self) -> Tuple[float, Dict]:

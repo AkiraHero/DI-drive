@@ -298,6 +298,7 @@ class SampleSerialCollector(ISerialCollector):
                         'step': self._env_info[env_id]['step'],
                         'train_sample': self._env_info[env_id]['train_sample'],
                         'success': timestep.info['success'],
+                        'failure_reason': timestep.info['failure_reason'],
                         'env_id': env_id,
                     }
                     if 'suite_name' in timestep.info.keys():
@@ -335,14 +336,17 @@ class SampleSerialCollector(ISerialCollector):
             episode_reward = [d['reward'] for d in self._episode_info]
             episode_suc = [d['success'] for d in self._episode_info]
             env_id = [d['env_id'] for d in self._episode_info]
+            # success / failure stats
             suite_cnt = {}
             for d in self._episode_info:
                 if 'suite_name' in d.keys():
                     suite_name = d['suite_name']
                     if suite_name not in suite_cnt.keys():
-                        suite_cnt[suite_name] = {'suc':0, 'total':0}
+                        suite_cnt[suite_name] = {'suc':0, 'total':0, 'failure_reason':[]}
                     if d['success']:
                         suite_cnt[suite_name]['suc'] += 1
+                    else:
+                        suite_cnt[suite_name]['failure_reason'].append(d['failure_reason'])
                     suite_cnt[suite_name]['total'] += 1
             self._total_duration += duration
             info = {
@@ -370,9 +374,43 @@ class SampleSerialCollector(ISerialCollector):
                 'total_success_rate': sum(episode_suc) / len(episode_suc),
                 'env_id':env_id,
             }
-            # update suite info
+
+            # update success info
+            # 1. suite
             for k, v in suite_cnt.items():
-                info.update({'suite_{}_count'.format(k): v['total'], 'suite_{}_suc_rate'.format(k): v['suc'] / v['total']})
+                self._tb_logger.add_scalar('{}_iter_suc_info/suite_{}/episode_num'.format(self._instance_name, k), v['total'], train_iter)
+                self._tb_logger.add_scalar('{}_iter_suc_info/suite_{}/suc_rate'.format(self._instance_name, k), v['suc'] / v['total'], train_iter)
+                failure_reason_dict = {}
+                failure_num = v['total'] - v['suc']
+                for rea_ in v['failure_reason']:
+                    if rea_ is not None:
+                        if rea_ not in failure_reason_dict.keys():
+                            failure_reason_dict[rea_] = 0
+                        failure_reason_dict[rea_] += 1
+                failure_rate_dict = {i: j / failure_num for i, j in failure_reason_dict.items()}
+                self._tb_logger.add_scalars('{}_iter_suc_info/suite_{}/fail_reason_rate'.format(self._instance_name, k), failure_rate_dict, train_iter)
+                self._tb_logger.add_scalars('{}_iter_suc_info/suite_{}/fail_reason_num'.format(self._instance_name, k), failure_reason_dict, train_iter)
+            # 2. total
+            total_num = 0
+            total_suc = 0
+            total_fail = 0
+            total_failure_reason_dict = {}
+            for k, v in suite_cnt.items():
+                total_num += v['total']
+                total_suc += v['suc']
+                total_fail += v['total'] - v['suc']
+                for rea_ in v['failure_reason']:
+                    if rea_ is not None:
+                        if rea_ not in total_failure_reason_dict.keys():
+                            total_failure_reason_dict[rea_] = 0
+            total_failure_rate_dict = {i: j / total_fail for i, j in total_failure_reason_dict.items()}
+            self._tb_logger.add_scalars('{}_iter_suc_info/total/fail_reason_rate'.format(self._instance_name), total_failure_rate_dict, train_iter)
+            self._tb_logger.add_scalars('{}_iter_suc_info/total/fail_reason_num'.format(self._instance_name), total_failure_reason_dict, train_iter)
+
+            # todo: update reward info
+                
+
+
             self._episode_info.clear()
             self._logger.info("collect end:\n{}".format('\n'.join(['{}: {}'.format(k, v) for k, v in info.items()])))
             for k, v in info.items():

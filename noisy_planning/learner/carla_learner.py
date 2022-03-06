@@ -125,9 +125,7 @@ class CarlaLearner(BaseLearner):
         # before run hook
         self.call_hook('before_run')
 
-        self.logger.error("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh")
         if self._only_evaluation_once:
-            self.logger.error("hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh")
             stop, rate = self._evaluator.eval(None, 0, 0)
             return
 

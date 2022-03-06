@@ -202,6 +202,35 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         # reset the subprocess
         self._create_env_subprocess(env_id)
 
+    def close(self) -> None:
+        """
+        Overview:
+            CLose the env manager and release all related resources.
+        """
+        if self._closed:
+            return
+        self._closed = True
+        self._env_ref.close()
+        for _, p in self._pipe_parents.items():
+            try:
+                p.send(['close', None, None])
+            except:
+                pass
+        for _, p in self._pipe_parents.items():
+            try:
+                p.recv()
+            except:
+                pass
+        for i in range(self._env_num):
+            self._env_states[i] = EnvState.VOID
+        # disable process join for avoiding hang
+        # for p in self._subprocesses:
+        #     p.join()
+        for _, p in self._subprocesses.items():
+            p.terminate()
+        for _, p in self._pipe_parents.items():
+            p.close()
+
     def _reset(self, env_id: int) -> None:
         verbose = False
 
