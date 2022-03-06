@@ -184,8 +184,10 @@ class SerialEvaluator(BaseEvaluator):
                     if env_id not in env_steps.keys():
                         env_steps[env_id] = 0
                     if t.info.get('abnormal', False):
-                        self._policy.reset([env_id])
                         env_steps[env_id] = 0
+                        self._logger.warning("step {}, process timestep of env={}, it is abnormal".format(total_step, env_id))
+                        self._env_manager.reset({env_id: None})
+                        self._policy.reset([env_id])
                         continue
                     if t.info['stuck']:
                         self._policy.reset([env_id])
