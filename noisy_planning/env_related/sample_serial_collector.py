@@ -403,6 +403,7 @@ class SampleSerialCollector(ISerialCollector):
                     if rea_ is not None:
                         if rea_ not in total_failure_reason_dict.keys():
                             total_failure_reason_dict[rea_] = 0
+                        total_failure_reason_dict[rea_] += 1
             total_failure_rate_dict = {i: j / total_fail for i, j in total_failure_reason_dict.items()}
             self._tb_logger.add_scalars('{}_iter_suc_info/total/fail_reason_rate'.format(self._instance_name), total_failure_rate_dict, train_iter)
             self._tb_logger.add_scalars('{}_iter_suc_info/total/fail_reason_num'.format(self._instance_name), total_failure_reason_dict, train_iter)

@@ -244,7 +244,8 @@ class SerialEvaluator(BaseEvaluator):
             if 'suite_name' in d.keys():
                 suite_name = d['suite_name']
                 if suite_name not in suite_cnt.keys():
-                    suite_cnt[suite_name] = {'suc':0, 'total':0, 'failure_reason':[]}
+                    suite_cnt[suite_name] = {'suc':0, 'total':0, 'failure_reason':[], 'rewards':[]}
+                suite_cnt[suite_name]['rewards'].append(d['reward'])
                 if d['success']:
                     suite_cnt[suite_name]['suc'] += 1
                 else:
@@ -277,6 +278,7 @@ class SerialEvaluator(BaseEvaluator):
         for k, v in suite_cnt.items():
             self._tb_logger.add_scalar('{}_iter_suc_info/suite_{}/episode_num'.format(self._instance_name, k), v['total'], train_iter)
             self._tb_logger.add_scalar('{}_iter_suc_info/suite_{}/suc_rate'.format(self._instance_name, k), v['suc'] / v['total'], train_iter)
+            self._tb_logger.add_scalar('{}_iter_suc_info/suite_{}/mean_reward'.format(self._instance_name, k), np.mean(v['rewards']), train_iter)
             failure_reason_dict = {}
             failure_num = v['total'] - v['suc']
             for rea_ in v['failure_reason']:
@@ -292,17 +294,21 @@ class SerialEvaluator(BaseEvaluator):
         total_suc = 0
         total_fail = 0
         total_failure_reason_dict = {}
+        all_rewards = []
         for k, v in suite_cnt.items():
             total_num += v['total']
             total_suc += v['suc']
             total_fail += v['total'] - v['suc']
+            all_rewards += v['rewards']
             for rea_ in v['failure_reason']:
                 if rea_ is not None:
                     if rea_ not in total_failure_reason_dict.keys():
                         total_failure_reason_dict[rea_] = 0
+                    total_failure_reason_dict[rea_] += 1
         total_failure_rate_dict = {i: j / total_fail for i, j in total_failure_reason_dict.items()}
         self._tb_logger.add_scalars('{}_iter_suc_info/total/fail_reason_rate'.format(self._instance_name), total_failure_rate_dict, train_iter)
         self._tb_logger.add_scalars('{}_iter_suc_info/total/fail_reason_num'.format(self._instance_name), total_failure_reason_dict, train_iter)
+        self._tb_logger.add_scalar('{}_iter_suc_info/total/mean_reward'.format(self._instance_name), np.mean(all_rewards), train_iter)
 
 
 
