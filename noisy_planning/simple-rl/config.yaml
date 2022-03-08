@@ -1,0 +1,179 @@
+enable_eval: false
+env:
+  col_is_failure: true
+  collector_env_num: 1
+  detector:
+    ckpt: /cpfs2/user/juxiaoliang/checkpoint_epoch_160.pth
+    data_config:
+      class_names:
+      - Car
+      - Pedestrian
+      depth_downsample_factor: null
+      point_feature_encoder:
+        num_point_features: 4
+    max_batch_size: 32
+    model_name: pointpillar
+    model_repo: openpcdet
+    score_thres:
+      vehicle: 0.6
+      walker: 0.5
+  enable_detector: false
+  evaluator_env_num: 0
+  failure_reward: -250
+  ignore_light: true
+  manager:
+    collect:
+      auto_reset: true
+      cfg_type: CarlaSyncSubprocessEnvManagerDict
+      connect_timeout: 60
+      context: spawn
+      episode_num: .inf
+      force_reproducibility: false
+      max_retry: 1
+      reset_timeout: 120
+      retry_type: renew
+      retry_waiting_time: 0.1
+      shared_memory: false
+      step_timeout: 120
+      step_wait_timeout: null
+      wait_num: .inf
+    eval:
+      auto_reset: true
+      cfg_type: CarlaSyncSubprocessEnvManagerDict
+      connect_timeout: 60
+      context: spawn
+      episode_num: .inf
+      force_reproducibility: false
+      max_retry: 1
+      reset_timeout: 120
+      retry_type: renew
+      retry_waiting_time: 0.1
+      shared_memory: false
+      step_timeout: 120
+      step_wait_timeout: null
+      wait_num: .inf
+  off_road_is_failure: true
+  off_route_distance: 7.5
+  off_route_is_failure: true
+  ran_light_is_failure: false
+  replay_path: ./ppo_video
+  reward_func: customized_compute_reward
+  simulator:
+    delta_seconds: 0.1
+    disable_two_wheels: true
+    obs:
+    - name: birdview
+      pixels_ahead_vehicle: 100
+      pixels_per_meter: 5
+      size:
+      - 160
+      - 160
+      type: bev
+    - channels: 64
+      fixed_pt_num: 40000
+      lower_fov: -45.0
+      name: toplidar
+      points_per_second: 640000
+      position:
+      - 0
+      - 0.0
+      - 1.6
+      range: 32
+      rotation:
+      - 0
+      - 0
+      - 0
+      rotation_frequency: 10
+      type: lidar
+      upper_fov: 10.0
+    planner:
+      resolution: 1
+      type: behavior
+    spawn_manner: random
+    town: Town01
+    verbose: false
+    waypoint_num: 32
+  stuck_is_failure: true
+  success_distance: 2.0
+  success_reward: 300
+  visualize:
+    type: birdview
+  wrapper:
+    collect:
+      suite: train_akira_turn_group
+      suite_n_pedestrians: 50
+      suite_n_vehicles: 50
+    eval:
+      suite: train_akira_turn_group
+      suite_n_pedestrians: 50
+      suite_n_vehicles: 50
+  wrong_direction_is_failure: true
+exp_name: simple-rl
+only_eval: false
+policy:
+  cfg_type: PPOPolicyDict
+  collect:
+    collector:
+      cfg_type: SampleSerialCollectorDict
+      collect_print_freq: 500
+      deepcopy_obs: false
+      transform_obs: true
+    discount_factor: 0.99
+    gae_lambda: 0.95
+    n_sample: 100
+    pre_sample_num: 3000
+    unroll_len: 1
+  continuous: true
+  cuda: true
+  eval:
+    evaluator:
+      eval_freq: 3000
+      eval_once: true
+      n_episode: 20
+      stop_rate: 1.0
+      transform_obs: true
+  learn:
+    adv_norm: false
+    batch_size: 3
+    clip_ratio: 0.2
+    entropy_weight: 0.01
+    epoch_per_collect: 5
+    grad_clip_type: clip_norm
+    grad_clip_value: 0.5
+    ignore_done: false
+    learner:
+      cfg_type: BaseLearnerDict
+      dataloader:
+        num_workers: 0
+      hook:
+        load_ckpt_before_run: ''
+        log_show_after_iter: 1000
+        save_ckpt_after_iter: 3000
+        save_ckpt_after_run: true
+      train_iterations: 1000000000
+    learning_rate: 0.0001
+    multi_gpu: false
+    ppo_param_init: true
+    target_update_freq: 100
+    value_norm: true
+    value_weight: 0.5
+    weight_decay: 0.0001
+  model:
+    obs_shape:
+    - 6
+    - 160
+    - 160
+  multi_agent: false
+  nstep_return: false
+  on_policy: true
+  priority: false
+  priority_IS_weight: false
+  recompute_adv: true
+  transition_with_policy_data: true
+  type: ppo
+server:
+- carla_host: localhost
+  carla_ports:
+  - 9000
+  - 9034
+  - 2

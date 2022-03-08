@@ -1,18 +1,19 @@
 # system
+import sys
+sys.path.append("/home/akira/carla-0.9.11-py3.7-linux-x86_64.egg")
 import logging
 import argparse
 from functools import partial
 import traceback
 import os
 import yaml
-import numpy # import numpy before torch to avoid some inexpected err
 import torch
 from easydict import EasyDict
 
 # ding
-from ding.envs import BaseEnvManager
 from noisy_planning.env_related.carla_env_manager import CarlaSyncSubprocessEnvManager
-from ding.policy import DQNPolicy, PPOPolicy, TD3Policy, SACPolicy, DDPGPolicy
+from ding.policy import DQNPolicy, TD3Policy, SACPolicy
+from rl_model.ppo import PPOPolicy
 from ding.worker import BaseLearner, AdvancedReplayBuffer, NaiveReplayBuffer
 from noisy_planning.env_related.sample_tail_collector import SampleTailCollector
 from noisy_planning.env_related.sample_serial_collector import SampleSerialCollector
@@ -23,7 +24,7 @@ from ding.rl_utils import get_epsilon_greedy_fn
 # rl model
 # dqn will use model from initial repo
 # from demo.simple_rl.model import DQNRLModel
-from noisy_planning.rl_model import TD3RLModel, DQNRLModel, PPORLModel, SACRLModel
+from noisy_planning.rl_model.rl_model import TD3RLModel, DQNRLModel, PPORLModel, SACRLModel
 
 from demo.simple_rl.env_wrapper import DiscreteEnvWrapper, ContinuousEnvWrapper
 
@@ -37,7 +38,6 @@ from core.eval import SerialEvaluator
 # other module
 from noisy_planning.detector.detection_model_wrapper import DetectionModelWrapper
 from noisy_planning.utils.debug_utils import generate_general_logger
-from tensorboardX import SummaryWriter
 from noisy_planning.learner.carla_learner import CarlaLearner
 
 

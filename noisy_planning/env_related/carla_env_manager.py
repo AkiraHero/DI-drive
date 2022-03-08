@@ -4,10 +4,11 @@ import os
 import traceback
 import logging
 import time
+import numpy as np
 from collections import namedtuple
 
 from ding.envs import SyncSubprocessEnvManager
-from ding.envs.env_manager.subprocess_env_manager import is_abnormal_timestep
+from ding.envs.env_manager.subprocess_env_manager import is_abnormal_timestep, ShmBufferContainer
 from ding.envs.env_manager.base_env_manager import retry_wrapper, EnvState
 from ding.utils import ENV_MANAGER_REGISTRY
 from ding.utils import PropagatingThread
@@ -21,6 +22,42 @@ from noisy_planning.detector.detection_utils import detection_process
 compatable with Ding v0.2.1
 '''
 timer = TestTimer()
+
+
+
+class ObsStack:
+    def __init__(self, maxlen: int, fill=True):
+        assert maxlen > 0
+        self._max_len = maxlen
+        self._fill = fill
+        self._stack = []
+        self._push_cnt = 0
+
+    def push(self, data):
+        self._push_cnt += 1
+        # ## debug
+        # data['birdview'][0][0][0] = self._push_cnt
+        # ##
+        if self._fill and len(self._stack) == 0:
+            self._stack = [data] * self._max_len
+        else:
+            self._stack.append(data)
+        cur_len = len(self._stack)
+        if cur_len > self._max_len:
+            self._stack = self._stack[-self._max_len:]
+        # ids = [id(i) for i in self._stack]
+        # print("[debug-push]" + str(ids))
+        # pass
+
+    def clear(self):
+        self._stack.clear()
+        self._push_cnt = 0
+
+    def get_data(self):
+        data_res = self._stack[::-1] # return reversed data
+        # ids = [id(i) for i in data_res]
+        # print("[debug-get]" + str(ids))
+        return data_res
 
 @ENV_MANAGER_REGISTRY.register('carla_subprocess')
 class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
@@ -43,6 +80,31 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         self._bev_obs_config = bev_obs_config
         assert len(env_ports) == len(env_fn)
         self._env_ports = env_ports
+        # overload
+        self._obs_stack_len = 5
+
+    def _create_state(self) -> None:
+        r"""
+        Overview:
+            Fork/spawn sub-processes(Call ``_create_env_subprocess``) and create pipes to transfer the data.
+        """
+        self._env_episode_count = {env_id: 0 for env_id in range(self.env_num)}
+        self._ready_obs = {env_id: ObsStack(maxlen=self._obs_stack_len) for env_id in range(self.env_num)}
+        self._env_ref = self._env_fn[0]()
+        self._reset_param = {i: {} for i in range(self.env_num)}
+        if self._shared_memory:
+            obs_space = self._env_ref.info().obs_space
+            shape = obs_space.shape
+            dtype = np.dtype(obs_space.value['dtype']) if obs_space.value is not None else np.dtype(np.float32)
+            self._obs_buffers = {env_id: ShmBufferContainer(dtype, shape) for env_id in range(self.env_num)}
+        else:
+            self._obs_buffers = {env_id: None for env_id in range(self.env_num)}
+        self._pipe_parents, self._pipe_children = {}, {}
+        self._subprocesses = {}
+        for env_id in range(self.env_num):
+            self._create_env_subprocess(env_id)
+        self._waiting_env = {'step': set()}
+        self._closed = False
 
     def _check_data(self, data: Dict, close: bool = False) -> bool:
         exceptions = []
@@ -176,23 +238,34 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 # timer.ed_point("det_step")
         ############################## perform detection ##############################
 
+        done_ids = []
         for env_id, timestep in timesteps.items():
             if is_abnormal_timestep(timestep):
                 self._env_states[env_id] = EnvState.ERROR
-                continue
             if timestep.done:
+                done_ids.append(env_id)
                 self._env_episode_count[env_id] += 1
-                if self._env_episode_count[env_id] < self._episode_num and self._auto_reset:
-                    self._env_states[env_id] = EnvState.RESET
-                    reset_thread = PropagatingThread(target=self._reset, args=(env_id,), name='regular_reset')
-                    reset_thread.daemon = True
-                    reset_thread.start()
-                    if self._force_reproducibility:
-                        reset_thread.join()
-                else:
-                    self._env_states[env_id] = EnvState.DONE
+            self._ready_obs[env_id].push(timestep.obs)
+        for env_id, timestep in timesteps.items():
+            stacked_history_obs = self._ready_obs[env_id].get_data()
+            # ids = [id(i) for i in stacked_history_obs]
+            # print("[debug-stacked_history_obs]" + str(ids))
+            timesteps[env_id] = BaseEnvTimestep(stacked_history_obs, timestep.reward, timestep.done, timestep.info)
+            # ids = [id(i) for i in timesteps[env_id].obs]
+            # print("[debug-timesteps[env_id].obs]" + str(ids))
+            pass
+
+        # reset done env
+        for env_id in done_ids:
+            if self._env_episode_count[env_id] < self._episode_num and self._auto_reset:
+                self._env_states[env_id] = EnvState.RESET
+                reset_thread = PropagatingThread(target=self._reset, args=(env_id,), name='regular_reset')
+                reset_thread.daemon = True
+                reset_thread.start()
+                if self._force_reproducibility:
+                    reset_thread.join()
             else:
-                self._ready_obs[env_id] = timestep.obs
+                self._env_states[env_id] = EnvState.DONE
         return timesteps
 
     def _restart_thread(self, env_id):
@@ -270,7 +343,8 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                         if self._check_data({env_id: obs}, close=False):
                             if self._shared_memory:
                                 obs = self._obs_buffers[env_id].get()
-                            self._ready_obs[env_id] = obs
+                            self._ready_obs[env_id].clear()
+                            self._ready_obs[env_id].push(obs)
                             self._env_reset_try_num[env_id] = 0
                             # self.logger.info("[RESET] Env={}, reset_params={}".format(env_id, str(reset_paras)))
                             return True
@@ -371,7 +445,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                     )
                 time.sleep(0.001)
                 sleep_count += 1
-            res_dict = {i: self._ready_obs[i] for i in self.ready_env}
+            res_dict = {i: self._ready_obs[i].get_data() for i in self.ready_env}
 
             ############################## perform detection ##############################
             if self._detection_model is not None:

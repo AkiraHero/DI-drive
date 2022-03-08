@@ -1,21 +1,19 @@
 import os
-import sys
 # sys.path.append("/home/xlju/carla-0.9.11-py3.7-linux-x86_64.egg")
 
 import argparse
 import torch
-from easydict import EasyDict
 
-from core.envs import DriveEnvWrapper,BenchmarkEnvWrapper
+from core.envs import BenchmarkEnvWrapper
 from core.utils.others.tcp_helper import parse_carla_tcp
 
 from ding.utils.default_helper import deep_merge_dicts
-from ding.policy import DQNPolicy, PPOPolicy, TD3Policy, SACPolicy, DDPGPolicy
+from ding.policy import DQNPolicy, PPOPolicy, TD3Policy, SACPolicy
 from ding.utils import set_pkg_seed
 
 # rl model
 # from demo.simple_rl.model import DQNRLModel
-from noisy_planning.rl_model import TD3RLModel, DQNRLModel, SACRLModel, PPORLModel
+from noisy_planning.rl_model.rl_model import TD3RLModel, DQNRLModel, SACRLModel, PPORLModel
 from demo.simple_rl.env_wrapper import DiscreteEnvWrapper, ContinuousEnvWrapper
 
 # other module
@@ -23,8 +21,6 @@ from noisy_planning.detector.detection_model_wrapper import DetectionModelWrappe
 from noisy_planning.eval.single_carla_evaluator_with_det import SingleCarlaEvaluatorWithDet
 from noisy_planning.eval.simple_carla_env_new_render import SimpleCarlaEnvNewRender
 from noisy_planning.simple_rl_train_with_detection import get_cfg
-from easydict import EasyDict
-
 
 
 def get_cls(spec):

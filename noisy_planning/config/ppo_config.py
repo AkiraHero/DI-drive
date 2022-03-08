@@ -5,7 +5,7 @@ ppo_config = dict(
     enable_eval=False,
     only_eval=False,
     env=dict(
-        collector_env_num=17,
+        collector_env_num=1,
         evaluator_env_num=0,
         simulator=dict(
             town='Town01',
@@ -116,7 +116,7 @@ ppo_config = dict(
         ),
         learn=dict(
             epoch_per_collect=5,
-            batch_size=128,
+            batch_size=3,
             learning_rate=0.0001,
             weight_decay=0.0001,
             value_weight=0.5,
@@ -134,10 +134,10 @@ ppo_config = dict(
         ),
         collect=dict(
             pre_sample_num=3000,
-            n_sample=3000,
+            n_sample=100,
             collector=dict(
                 collect_print_freq=500,
-                deepcopy_obs=True,
+                deepcopy_obs=False,
                 transform_obs=True,
             ),
             discount_factor=0.99,

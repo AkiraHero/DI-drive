@@ -434,6 +434,12 @@ class PPORLModel(nn.Module):
             self.critic = nn.ModuleList([self.critic_encoder, self.critic_head])
 
     def forward(self, inputs, mode=None, **kwargs):
+        ### debug ###
+        # temporary take one to debug
+        if isinstance(inputs, list) and len(inputs) > 1:
+            inputs = inputs[0]
+
+        #############
         assert (mode in ['compute_actor_critic', 'compute_actor', 'compute_critic'])
         f = getattr(self, mode)
         return f(inputs, **kwargs)
