@@ -436,7 +436,7 @@ class PPORLModel(nn.Module):
     def forward(self, inputs, mode=None, **kwargs):
         ### debug ###
         # temporary take one to debug
-        if isinstance(inputs, list) and len(inputs) > 1:
+        if isinstance(inputs, list) and len(inputs) > 0:
             inputs = inputs[0]
 
         #############

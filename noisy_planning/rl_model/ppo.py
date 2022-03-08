@@ -94,7 +94,9 @@ class PPOPolicy(Policy):
         if self._cfg.learn.ppo_param_init:
             for n, m in self._model.named_modules():
                 if isinstance(m, torch.nn.Linear):
-                    torch.nn.init.orthogonal_(m.weight)
+                    weight = m.weight.cpu() # avoid CUSOLVER_STATUS_EXECUTION_FAILED on some platform
+                    torch.nn.init.orthogonal_(weight)
+                    m.weight.data.copy_(weight.data)
                     torch.nn.init.zeros_(m.bias)
             if self._continuous:
                 # init log sigma
@@ -103,7 +105,9 @@ class PPOPolicy(Policy):
                 for m in list(self._model.critic.modules()) + list(self._model.actor.modules()):
                     if isinstance(m, torch.nn.Linear):
                         # orthogonal initialization
-                        torch.nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
+                        weight = m.weight.cpu()
+                        torch.nn.init.orthogonal_(weight, gain=np.sqrt(2))
+                        m.weight.data.copy_(weight.data)
                         torch.nn.init.zeros_(m.bias)
                 # do last policy layer scaling, this will make initial actions have (close to)
                 # 0 mean and std, and will help boost performances,
