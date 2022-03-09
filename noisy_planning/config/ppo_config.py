@@ -112,7 +112,9 @@ ppo_config = dict(
         nstep_return=False,
         on_policy=True,
         model=dict(
-            obs_shape=[6, 160, 160],
+            obs_shape=[3, 160, 160],
+            obs_seq_len=5,
+            use_temporal_model=True,
         ),
         learn=dict(
             epoch_per_collect=5,

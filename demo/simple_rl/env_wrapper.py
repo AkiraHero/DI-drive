@@ -33,8 +33,16 @@ DEFAULT_STEER_LIST = [
 
 
 def get_obs_out(obs):
+    # dim 1: add up road + lane
+    # dim 2: add up vehicle + pedestrian
+    # dim 3: route
+    road_layer = obs['birdview'][..., 0] + obs['birdview'][..., 1]
+    obstacle_layer = obs['birdview'][..., 5] + obs['birdview'][..., 6]
+    route_layer = obs['birdview'][..., 8]
+    new_birdview_pack = np.stack([road_layer, obstacle_layer, route_layer], -1)
     obs_out = {
-        'birdview': obs['birdview'][..., [0, 1, 5, 6, 8, 7]],
+        # 'birdview': obs['birdview'][..., [0, 1, 5, 6, 8, 7]],
+        'birdview': new_birdview_pack,
         'speed': (obs['speed'] / 25).astype(np.float32),
 #        'bev_elements': obs['birdview_initial_dict']
     }

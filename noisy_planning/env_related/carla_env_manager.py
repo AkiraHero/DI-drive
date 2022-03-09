@@ -69,6 +69,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             detector=None,
             detection_max_batch_size=None,
             bev_obs_config=None,
+            obs_stack_len=1,
     ) -> None:
         super(CarlaSyncSubprocessEnvManager, self).__init__(env_fn, cfg)
         self._env_reset_try_num = {}

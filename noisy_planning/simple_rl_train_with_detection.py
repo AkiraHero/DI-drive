@@ -25,6 +25,7 @@ from ding.rl_utils import get_epsilon_greedy_fn
 # dqn will use model from initial repo
 # from demo.simple_rl.model import DQNRLModel
 from noisy_planning.rl_model.rl_model import TD3RLModel, DQNRLModel, PPORLModel, SACRLModel
+from noisy_planning.rl_model.temporal_rl_model import PPOTemporalRLModel
 
 from demo.simple_rl.env_wrapper import DiscreteEnvWrapper, ContinuousEnvWrapper
 
@@ -51,30 +52,6 @@ def wrapped_continuous_env(env_cfg, wrapper_cfg, host, port, tm_port=None):
     return BenchmarkEnvWrapper(ContinuousEnvWrapper(env), wrapper_cfg)
 
 
-def get_cfg(args):
-    if args.ding_cfg is not None:
-        ding_cfg = args.ding_cfg
-    else:
-        ding_cfg = {
-            'dqn': 'noisy_planning.config.dqn_config.py',
-            'ppo': 'noisy_planning.config.ppo_config.py',
-            'td3': 'noisy_planning.config.td3_config.py',
-            'sac': 'noisy_planning.config.sac_config.py',
-        }[args.policy]
-    default_train_config = read_ding_config(ding_cfg)
-    default_train_config.exp_name = args.name
-    use_policy, _ = get_cls(args.policy)
-    use_buffer = AdvancedReplayBuffer if args.policy != 'ppo' else None
-    cfg = compile_config(
-        cfg=default_train_config,
-        env_manager=CarlaSyncSubprocessEnvManager,
-        policy=use_policy,
-        learner=BaseLearner,
-        collector=SampleSerialCollector,
-        buffer=use_buffer,
-    )
-    return cfg
-
 def edict2dict(edict_obj):
     if isinstance(edict_obj, list) or isinstance(edict_obj, tuple):
         return [edict2dict(i) for i in edict_obj]
@@ -86,13 +63,19 @@ def edict2dict(edict_obj):
     return edict_obj
 
 
-def get_cls(spec):
-    policy_cls, model_cls = {
-        'dqn': (DQNPolicy, DQNRLModel),
-        'td3': (TD3Policy, TD3RLModel),
-        'ppo': (PPOPolicy, PPORLModel),
-        'sac': (SACPolicy, SACRLModel),
+def get_policy_cls(spec, model_type=None):
+    policy_cls = {
+        'dqn': DQNPolicy,
+        'td3': TD3Policy,
+        'ppo': PPOPolicy,
+        'sac': SACPolicy,
     }[spec]
+    model_cls = {
+        'dqn': {'default': DQNRLModel},
+        'td3': {'default': TD3RLModel},
+        'ppo': {'default': PPORLModel, 'temporal': PPOTemporalRLModel},
+        'sac': {'default': SACRLModel}
+    }[spec][model_type]
 
     return policy_cls, model_cls
 
@@ -107,7 +90,37 @@ def main(args, seed=0):
     enable_eval = True
     only_eval = False
 
-    cfg = get_cfg(args)
+    '''
+    Get and merge cfg
+    '''
+    if args.ding_cfg is not None:
+        ding_cfg = args.ding_cfg
+    else:
+        ding_cfg = {
+            'dqn': 'noisy_planning.config.dqn_config.py',
+            'ppo': 'noisy_planning.config.ppo_config.py',
+            'td3': 'noisy_planning.config.td3_config.py',
+            'sac': 'noisy_planning.config.sac_config.py',
+        }[args.policy]
+    default_train_config = read_ding_config(ding_cfg)
+    default_train_config.exp_name = args.name
+
+    model_type = 'default'
+    if 'use_temporal_model' in default_train_config.policy.model.keys():
+        use_temporal = default_train_config.policy.model.pop('use_temporal_model')
+        if use_temporal:
+            model_type = 'temporal'
+    policy_cls, model_cls = get_policy_cls(args.policy, model_type)
+    use_buffer = AdvancedReplayBuffer if args.policy != 'ppo' else None
+    cfg = compile_config(
+        cfg=default_train_config,
+        env_manager=CarlaSyncSubprocessEnvManager,
+        policy=policy_cls,
+        learner=BaseLearner,
+        collector=SampleSerialCollector,
+        buffer=use_buffer,
+    )
+
     if 'enable_eval' in cfg.keys():
         enable_eval = cfg.enable_eval
     if 'only_eval' in cfg.keys():
@@ -128,7 +141,6 @@ def main(args, seed=0):
     '''
     Policy
     '''
-    policy_cls, model_cls = get_cls(args.policy)
     model = model_cls(**cfg.policy.model)
     policy = policy_cls(cfg.policy, model=model)
 
@@ -181,6 +193,7 @@ def main(args, seed=0):
             detection_max_batch_size=detection_max_batch_size,
             bev_obs_config=obs_bev_config,
             env_ports=[tcp_list[i] for i in range(collector_env_num)],
+            obs_stack_len=cfg.policy.model.obs_seq_len
         )
         collector_env.seed(seed)
         if args.use_new_collector:
@@ -208,7 +221,8 @@ def main(args, seed=0):
                 detector=detection_model,
                 detection_max_batch_size=detection_max_batch_size,
                 bev_obs_config=obs_bev_config,
-                env_ports=[tcp_list[collector_env_num + i] for i in range(evaluator_env_num)]
+                env_ports=[tcp_list[collector_env_num + i] for i in range(evaluator_env_num)],
+                obs_stack_len=cfg.policy.model.obs_seq_len
             )
             # Uncomment this to add save replay when evaluation
             # evaluate_env.enable_save_replay(cfg.env.replay_path)
