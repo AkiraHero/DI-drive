@@ -169,6 +169,13 @@ class CarlaLearner(BaseLearner):
             timer.ed_point("New Data PostProcessing")
 
             timer.st_point("Sample and Training")
+            #debug-spec
+            for i in new_data:
+                i['obs'] = i['obs'][0]
+                i['next_obs'] = i['next_obs'][0]
+            ###
+
+
             if self._policy_name == 'ppo':
                 self.train(new_data, self._collector.envstep)
             else:

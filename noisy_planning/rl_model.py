@@ -65,8 +65,9 @@ class BEVSpeedConvEncoder(nn.Module):
         :Returns:
             torch.Tensor: Embedding feature.
         """
-        ##debug##
-        data = data[0]
+        ##debug-spec##
+        if isinstance(data, list):
+            data = data[0]
         #########
         birdview_data = data['birdview']
         speed = data['speed']
