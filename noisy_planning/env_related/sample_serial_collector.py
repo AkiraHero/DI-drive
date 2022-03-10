@@ -1,4 +1,4 @@
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Dict
 from collections import namedtuple
 from easydict import EasyDict
 import numpy as np
@@ -7,8 +7,47 @@ import torch
 from ding.envs import BaseEnvManager
 from ding.utils import build_logger, EasyTimer, SERIAL_COLLECTOR_REGISTRY, one_time_warning
 from ding.torch_utils import to_tensor, to_ndarray
-from ding.worker.collector.base_serial_collector import ISerialCollector, CachePool, TrajBuffer, INF, to_tensor_transitions
+from ding.worker.collector.base_serial_collector import ISerialCollector, CachePool, TrajBuffer, INF
 
+
+def to_tensor_transitions(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Overview:
+        transitions collected data to tensor.
+    Argument:
+        - data (:obj:`List[Dict[str, Any]]`): the data that will be transited to tensor.
+    Return:
+        - data (:obj:`List[Dict[str, Any]]`): the data that can be transited to tensor.
+
+    .. tip::
+        In order to save memory, If there are next_obs in the passed data, we do special \
+            treatment on next_obs so that the next_obs of each state in the data fragment is \
+            the next state's obs and the next_obs of the last state is its own next_obs, \
+            and we make transform_scalar is False.
+    """
+    obs_id_dict={}
+    for d in data:
+        for inx, obs in enumerate(d['obs']):
+            id_ = id(obs)
+            if id_ not in obs_id_dict.keys():
+                d['obs'][inx] = to_tensor(obs)
+                obs_id_dict[id_] = d['obs'][inx]
+            else:
+                d['obs'][inx] = obs_id_dict[id_]
+    for inx, obs in enumerate(data[-1]['next_obs']):
+        id_ = id(obs)
+        if id_ not in obs_id_dict.keys():
+            data[-1]['next_obs'][inx] = to_tensor(obs)
+            obs_id_dict[id_] = data[-1]['next_obs'][inx]
+        else:
+            data[-1]['next_obs'][inx] = obs_id_dict[id_]
+
+
+    # for save memory
+    data = to_tensor(data, ignore_keys=['next_obs', 'obs'], transform_scalar=False)
+    for i in range(len(data) - 1):
+        data[i]['next_obs'] = data[i + 1]['obs']
+    return data
 
 # @SERIAL_COLLECTOR_REGISTRY.register('sample')
 class SampleSerialCollector(ISerialCollector):
@@ -228,8 +267,8 @@ class SampleSerialCollector(ISerialCollector):
                 obs = self._env.ready_obs
                 # Policy forward.
                 self._obs_pool.update(obs)
-                if self._transform_obs:
-                    obs = to_tensor(obs, dtype=torch.float32)
+                # if self._transform_obs:
+                #     obs = to_tensor(obs, dtype=torch.float32)
                 policy_output = self._policy.forward(obs, **policy_kwargs)
                 self._policy_output_pool.update(policy_output)
                 # Interact with env.
@@ -262,9 +301,17 @@ class SampleSerialCollector(ISerialCollector):
                         self._reset_stat(env_id)
                         # self._logger.warning("step {}, process timestep of env={}, it is abnormal,rest over".format(step_all_cnt, env_id))
                         continue
+
+                    # ids = [id(i) for i in self._obs_pool[env_id]]
+                    # print("[debug-transition['obs']]" + str(ids))
+
                     transition = self._policy.process_transition(
                         self._obs_pool[env_id], self._policy_output_pool[env_id], timestep
                     )
+
+                    # ids = [id(i) for i in transition['obs']]
+                    # print("[debug-transition['obs']]" + str(ids))
+
                     # ``train_iter`` passed in from ``serial_entry``, indicates current collecting model's iteration.
                     transition['collect_iter'] = train_iter
                     self._traj_buffer[env_id].append(transition)  # NOTE
@@ -273,7 +320,7 @@ class SampleSerialCollector(ISerialCollector):
                     # prepare data
                     if timestep.done or len(self._traj_buffer[env_id]) == self._traj_len:
                         # Episode is done or traj_buffer(maxlen=traj_len) is full.
-                        transitions = to_tensor_transitions(self._traj_buffer[env_id])
+                        transitions = to_tensor_transitions(self._traj_buffer[env_id]) # all manage by policy
                         train_sample = self._policy.get_train_sample(transitions)
                         return_data.extend(train_sample)
                         self._total_train_sample_count += len(train_sample)

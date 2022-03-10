@@ -100,8 +100,8 @@ ppo_config = dict(
             )
         ),
         wrapper=dict(
-            collect=dict(suite='train_akira_turn_group', suite_n_vehicles=50, suite_n_pedestrians=50, ),
-            eval=dict(suite='train_akira_turn_group', suite_n_vehicles=50, suite_n_pedestrians=50, ),
+            collect=dict(suite='train_akira_turn_group', suite_n_vehicles=0, suite_n_pedestrians=0, ),
+            eval=dict(suite='train_akira_turn_group', suite_n_vehicles=0, suite_n_pedestrians=0, ),
         ),
     ),
     server=[
@@ -134,10 +134,10 @@ ppo_config = dict(
         ),
         collect=dict(
             pre_sample_num=3000,
-            n_sample=3000,
+            n_sample=256,
             collector=dict(
                 collect_print_freq=500,
-                deepcopy_obs=True,
+                deepcopy_obs=False,
                 transform_obs=True,
             ),
             discount_factor=0.99,
