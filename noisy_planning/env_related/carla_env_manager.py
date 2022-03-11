@@ -452,8 +452,14 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             if self._detection_model is not None:
                 data_list = []
                 for v in res_dict.values():
-                    if 'detected' not in v.keys() or v['detected'] != 1.0:
-                        data_list.append(v)
+                    if isinstance(v, dict):
+                        if 'detected' not in v.keys() or v['detected'] != 1.0:
+                            data_list.append(v)
+                    if isinstance(v, list):
+                        for v_ in v:
+                            if 'detected' not in v_.keys() or v_['detected'] != 1.0:
+                                data_list.append(v_)
+
                 if len(data_list):
                     timer.st_point("det_ready_obs")
                     self.logger.warning("perform det in ready_obs with list len={}".format(len(data_list)))
@@ -462,8 +468,13 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
 
                 # check detection process stamp
                 for k, v in res_dict.items():
-                    if not v['detected']:
-                        raise TypeError("Detection needed...")
+                    if isinstance(v, dict):
+                        if not v['detected']:
+                            raise TypeError("Detection needed...")
+                    if isinstance(v, list):
+                        for v_ in v:
+                            if not v_['detected']:
+                                raise TypeError("Detection needed...")
             ############################## perform detection ##############################
             return res_dict
         except Exception as e:
