@@ -2,6 +2,7 @@ import torch
 import carla
 import pygame
 import numpy as np
+from collections import OrderedDict
 
 def validate_point_size(point_frm):
     point = point_frm
@@ -106,7 +107,11 @@ def check_obs_id(data_list):
 def detection_process(data_list, detector, env_bev_obs_cfg, keep_ini=False):
     # 1. extract batch
     batch_points = []
+    unique_ids = OrderedDict()
     for i in data_list:
+        unique_ids[id(i)] = i
+
+    for i in unique_ids.values():
         p_frm = i['lidar_points']
         batch_points.append({'points': validate_point_size(p_frm)})
         # visualize_points(p_frm_cur)
@@ -115,15 +120,8 @@ def detection_process(data_list, detector, env_bev_obs_cfg, keep_ini=False):
     detection_res = detector.forward(batch_points)
 
     # 3. distribute and draw obs on bev
-    for inx, (i, j) in enumerate(zip(data_list, detection_res)):
-        # i['lidar_points'] = "processed"
-        # print("i['obs']:", i['obs'].keys())
+    for inx, (i, j) in enumerate(zip(unique_ids.values(), detection_res)):
         i.pop('lidar_points')
-        # i['detection'] = {
-        #     'current': j1,
-        #     'next': j2
-        # }
-        # draw obs
         map_width = env_bev_obs_cfg.size[0]
         map_height = env_bev_obs_cfg.size[1]
         pixel_ahead = env_bev_obs_cfg.pixels_ahead_vehicle
@@ -149,3 +147,8 @@ def detection_process(data_list, detector, env_bev_obs_cfg, keep_ini=False):
             i['birdview'][:, :, 2] = vehicle_dim
             i['birdview'][:, :, 3] = walker_dim
         i['detected'] = 1.0 # avoid batch collate error, use float
+
+    # 4. checkall
+    for i in data_list:
+        assert i['detected'] == 1.0
+        assert 'lidar_points' not in i.keys()
