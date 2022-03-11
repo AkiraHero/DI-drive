@@ -109,7 +109,10 @@ def detection_process(data_list, detector, env_bev_obs_cfg, keep_ini=False):
     batch_points = []
     unique_ids = OrderedDict()
     for i in data_list:
-        unique_ids[id(i)] = i
+        if 'lidar_points' in i.keys():
+            unique_ids[id(i)] = i
+        else:
+            assert i['detected'] == 1.0 
 
     for i in unique_ids.values():
         p_frm = i['lidar_points']
