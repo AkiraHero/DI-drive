@@ -273,8 +273,17 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 'timeout': self._tick > self._timeout,
                 'success': self.is_success(),
                 'failure_reason': self._failure_reason,
+
+                'end_timeout': self._simulator.end_timeout,
+                'end_distance': self._simulator.end_distance,
+                'total_distance': self._simulator.total_distance,
             }
         )
+        info.update({'state': self._simulator_databuffer['state'],
+                     'navigation': self._simulator_databuffer['navigation'],
+                     'information': self._simulator_databuffer['information'],
+                     'action': self._simulator_databuffer['action'],
+                     })
         if self._suite_name:
             info.update({
                 'suite_name': self._suite_name

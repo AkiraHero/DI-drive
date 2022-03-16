@@ -5,6 +5,7 @@ import traceback
 import logging
 import time
 from collections import namedtuple
+import numpy as np
 
 from ding.envs import SyncSubprocessEnvManager
 from ding.envs.env_manager.subprocess_env_manager import is_abnormal_timestep
@@ -16,7 +17,7 @@ from ding.envs.env.base_env import BaseEnvTimestep
 from noisy_planning.utils.debug_utils import generate_general_logger, TestTimer
 from noisy_planning.detector.detection_model_wrapper import DetectionModelWrapper
 from noisy_planning.detector.detection_utils import detection_process
-
+from core.utils.others.visualizer import Visualizer
 '''
 compatable with Ding v0.2.1
 '''
@@ -43,6 +44,9 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         self._bev_obs_config = bev_obs_config
         assert len(env_ports) == len(env_fn)
         self._env_ports = env_ports
+        self._visualize_cfg = None
+        self._visualizers = {i: None for i in range(len(self._env_num))}
+
 
     def _check_data(self, data: Dict, close: bool = False) -> bool:
         exceptions = []
@@ -176,6 +180,9 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 # timer.ed_point("det_step")
         ############################## perform detection ##############################
 
+        # visualize
+        self.render(timesteps)
+
         for env_id, timestep in timesteps.items():
             if is_abnormal_timestep(timestep):
                 self._env_states[env_id] = EnvState.ERROR
@@ -207,6 +214,10 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         Overview:
             CLose the env manager and release all related resources.
         """
+        for k, v in self._visualizers:
+            if v is not None:
+                v.done()
+                v = None
         if self._closed:
             return
         self._closed = True
@@ -318,6 +329,18 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 if self._closed:
                     self.logger.error("Reseting interrupted for recv closing signal...")
                     break
+
+            # visualization
+            if self._visualize_cfg is not None:
+                if self._visualizers[env_id] is not None:
+                    self._visualizers[env_id].done()
+                else:
+                    self._visualizers[env_id] = Visualizer(self._visualize_cfg)
+                vis_name = "vis_{}".format(
+                    time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+                )
+                self._visualizers[env_id].init(vis_name)
+
             # Because each thread updates the corresponding env_id value, they won't lead to a thread-safe problem.
             self._env_states[env_id] = EnvState.RUN
             self.logger.info("Env {} reset success!".format(env_id))
@@ -395,3 +418,78 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             self.logger.error('\nRead Property error in ENV Manager:\n'
                               + ''.join(traceback.format_tb(e.__traceback__)) + repr(e))
             return {}
+
+
+    def render(self, timesteps, mode='rgb_array') -> Any:
+        """
+        0 road
+        1 lane
+        2 red light
+        3 yellow light
+        4 green light
+        5 vehicle
+        6 pedestrian
+        7 hero
+        8 route
+        """
+        def render_image(bird_view_data_dict):
+            BACKGROUND = [0, 0, 0]
+            bev_render_colors = {
+                'road': (85, 87, 83),
+                'lane': (211, 215, 207),
+                'lightRed': (255, 0, 0),
+                'lightYellow': (255, 255, 0),
+                'lightGreen': (0, 255, 0),
+                'vehicle': (252, 175, 62),
+                'pedestrian': (173, 74, 168),
+                'hero': (32, 74, 207),
+                'route': (41, 239, 41),
+            }
+            canvas = None
+            for k, v in bird_view_data_dict.items():
+                if canvas is None:
+                    h, w = v.shape
+                    canvas = np.zeros((h, w, 3), dtype=np.uint8)
+                    canvas[...] = BACKGROUND
+                canvas[v > 0.5] = bev_render_colors[k]
+                return canvas
+
+
+        for env_id, timestep in timesteps.items():
+            visualizer = self._visualizers[env_id]
+            if visualizer is None:
+                continue
+
+            chn_dict = {
+                'road': timestep.obs['birdview'][..., 0],
+                'lane': timestep.obs['birdview'][..., 1],
+                'vehicle': timestep.obs['birdview'][..., 2],
+                'pedestrian': timestep.obs['birdview'][..., 3],
+                'route': timestep.obs['birdview'][..., 4],
+                'hero': timestep.obs['birdview'][..., 5],
+            }
+
+            render_buffer = render_image(chn_dict)
+            render_info = {
+                'collided': timestep.info.collided,
+                'off_road': timestep.info._off_road,
+                'wrong_direction': timestep.info.wrong_direction,
+                'off_route': timestep.info.off_route,
+                'reward': timestep.reward,
+                'tick': timestep.info['tick'],
+                'end_timeout': timestep.info['end_timeout'],
+                'end_distance': timestep.info['end_distance'],
+                'total_distance': timestep.info['total_distance'],
+            }
+            render_info.update(timestep.info['state'])
+            render_info.update(timestep.info['navigation'])
+            render_info.update(timestep.info['information'])
+            render_info.update(timestep.info['action'])
+            visualizer.paint(render_buffer, render_info)
+            visualizer.run_visualize()
+
+            if timestep.done:
+                # visualize
+                if self._visualizers[env_id] is not None:
+                    self._visualizers[env_id].done()
+                    self._visualizers[env_id] = None
