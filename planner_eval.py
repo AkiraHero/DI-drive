@@ -15,6 +15,30 @@ def cal_mean_rw(d_list):
         rw += i['reward']
     return rw / len(d_list)
 
+def cal_mean_step(d_list):
+    rw = 0
+    for i in d_list:
+        rw += i['step']
+    return rw / len(d_list)
+
+def cal_mean_suc_step(d_list):
+    rw = 0
+    suc_num = 0
+    for i in d_list:
+        if i['success']:
+            rw += i['step']
+            suc_num += 1
+    return rw / suc_num
+
+def cal_mean_failure_step(d_list):
+    rw = 0
+    suc_num = 0
+    for i in d_list:
+        if not i['success']:
+            rw += i['step']
+            suc_num += 1
+    return rw / suc_num
+
 def cal_suc_rate(d_list):
     suc = 0
     for i in d_list:
@@ -22,7 +46,7 @@ def cal_suc_rate(d_list):
             suc += 1
     return suc / len(d_list)
 
-root_dir = "/home/akira/Project/Model_behaviour/DI-drive/eval"
+root_dir = "/home/juxiaoliang/Project/eval"
 
 train_condition = ['withdet', 'nodet', 'nodynamic']
 test_condition =  ['withdet', 'nodet', 'detwithdynamic10']
@@ -35,8 +59,14 @@ for i in subdirs:
         # assert len(episodes) == 500
         suc_rate = cal_suc_rate(episodes)
         mean_reward = cal_mean_rw(episodes)
+        mean_step = cal_mean_step(episodes)
+        mean_suc_step = cal_mean_suc_step(episodes)
+        mean_fail_step = cal_mean_failure_step(episodes)
         print("======={}==========".format(i))
         print("success rate:{}".format(suc_rate))
         print("average rewars:{}".format(mean_reward))
+        print("average steps:{}".format(mean_step))
+        print("average suc steps:{}".format(mean_suc_step))
+        print("average fail steps:{}".format(mean_fail_step))
         print("valid episode:{}".format(len(episodes)))
 
