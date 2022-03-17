@@ -143,7 +143,8 @@ def detection_process(data_list, detector, env_bev_obs_cfg, keep_ini=False):
         if keep_ini:
             i['ini_vehicle_dim'] = i['birdview'][:, :, 2]
             i['ini_walker_dim'] = i['birdview'][:, :, 3]
-
+        i['gt_vehicle'] = i['birdview'][:, :, 2]
+        i['gt_pedestrian'] = i['birdview'][:, :, 3]
         i['birdview'][:, :, 2] = vehicle_dim
         i['birdview'][:, :, 3] = walker_dim
         i['detected'] = 1.0 # avoid batch collate error, use float

@@ -1,4 +1,6 @@
 # system
+# import sys
+# sys.path.append("/home/akira/carla-0.9.11-py3.7-linux-x86_64.egg")
 import logging
 import argparse
 from functools import partial
@@ -181,6 +183,7 @@ def main(args, seed=0):
             detection_max_batch_size=detection_max_batch_size,
             bev_obs_config=obs_bev_config,
             env_ports=[tcp_list[i] for i in range(collector_env_num)],
+            exp_name=cfg.exp_name,
         )
         collector_env.seed(seed)
         if args.use_new_collector:
@@ -208,7 +211,8 @@ def main(args, seed=0):
                 detector=detection_model,
                 detection_max_batch_size=detection_max_batch_size,
                 bev_obs_config=obs_bev_config,
-                env_ports=[tcp_list[collector_env_num + i] for i in range(evaluator_env_num)]
+                env_ports=[tcp_list[collector_env_num + i] for i in range(evaluator_env_num)],
+                exp_name = cfg.exp_name,
             )
             # Uncomment this to add save replay when evaluation
             # evaluate_env.enable_save_replay(cfg.env.replay_path)

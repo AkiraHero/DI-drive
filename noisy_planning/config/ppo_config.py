@@ -5,11 +5,11 @@ ppo_config = dict(
     enable_eval=False,
     only_eval=False,
     env=dict(
-        collector_env_num=17,
+        collector_env_num=1,
         evaluator_env_num=0,
         simulator=dict(
             town='Town01',
-            spawn_manner="random",  # random, near
+            spawn_manner="near",  # random, near
             delta_seconds=0.1,
             disable_two_wheels=True,
             verbose=False,
@@ -74,11 +74,7 @@ ppo_config = dict(
         success_reward=300,
         failure_reward=-250,
         replay_path='./ppo_video',
-        visualize=dict(
-            type='birdview',
-            # save_dir="see_collection",
-            # outputs=['video'],
-        ),
+        visualize=None,
         manager=dict(
             collect=dict(
                 auto_reset=True,
@@ -88,6 +84,10 @@ ppo_config = dict(
                 retry_type='renew',
                 step_timeout=120,
                 reset_timeout=120,
+                # visualize=dict(
+                #             type='birdview',
+                #             # outputs=['video'],
+                #         ),
             ),
             eval=dict(
                 auto_reset=True,
@@ -97,6 +97,10 @@ ppo_config = dict(
                 retry_type='renew',
                 step_timeout=120,
                 reset_timeout=120,
+                # visualize=dict(
+                #             type='birdview',
+                #             # outputs=['video'],
+                #         ),
             )
         ),
         wrapper=dict(

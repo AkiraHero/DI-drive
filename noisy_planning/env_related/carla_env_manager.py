@@ -33,6 +33,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             detector=None,
             detection_max_batch_size=None,
             bev_obs_config=None,
+            exp_name=None,
     ) -> None:
         super(CarlaSyncSubprocessEnvManager, self).__init__(env_fn, cfg)
         self._env_reset_try_num = {}
@@ -45,7 +46,14 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         assert len(env_ports) == len(env_fn)
         self._env_ports = env_ports
         self._visualize_cfg = None
-        self._visualizers = {i: None for i in range(len(self._env_num))}
+        self._exp_name = exp_name
+        self._visualizer_save_dir = os.path.join(self._exp_name, "visualizer")
+        if not os.path.exists(self._visualizer_save_dir):
+            os.makedirs(self._visualizer_save_dir)
+        if 'visualize' in cfg.keys():
+            self._visualize_cfg = cfg.visualize
+            self._visualize_cfg['save_dir'] = self._visualizer_save_dir
+        self._visualizers = {i: None for i in range(self._env_num)}
 
 
     def _check_data(self, data: Dict, close: bool = False) -> bool:
@@ -214,7 +222,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         Overview:
             CLose the env manager and release all related resources.
         """
-        for k, v in self._visualizers:
+        for k, v in self._visualizers.items():
             if v is not None:
                 v.done()
                 v = None
@@ -336,7 +344,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                     self._visualizers[env_id].done()
                 else:
                     self._visualizers[env_id] = Visualizer(self._visualize_cfg)
-                vis_name = "vis_{}".format(
+                vis_name = "vis_env{}_{}".format(env_id,
                     time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
                 )
                 self._visualizers[env_id].init(vis_name)
@@ -452,7 +460,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                     canvas = np.zeros((h, w, 3), dtype=np.uint8)
                     canvas[...] = BACKGROUND
                 canvas[v > 0.5] = bev_render_colors[k]
-                return canvas
+            return canvas
 
 
         for env_id, timestep in timesteps.items():
@@ -470,11 +478,22 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             }
 
             render_buffer = render_image(chn_dict)
+            render_buffer_gt = None
+            if 'detected' in timestep.obs.keys() and timestep.obs['detected']:
+                chn_dict_gt = {
+                    'road': timestep.obs['birdview'][..., 0],
+                    'lane': timestep.obs['birdview'][..., 1],
+                    'vehicle': timestep.obs['gt_vehicle'],
+                    'pedestrian': timestep.obs['gt_pedestrian'],
+                    'route': timestep.obs['birdview'][..., 4],
+                    'hero': timestep.obs['birdview'][..., 5],
+                }
+                render_buffer_gt = render_image(chn_dict_gt)
             render_info = {
-                'collided': timestep.info.collided,
-                'off_road': timestep.info._off_road,
-                'wrong_direction': timestep.info.wrong_direction,
-                'off_route': timestep.info.off_route,
+                'collided': timestep.info['collided'],
+                'off_road': timestep.info['off_road'],
+                'wrong_direction': timestep.info['wrong_direction'],
+                'off_route': timestep.info['off_route'],
                 'reward': timestep.reward,
                 'tick': timestep.info['tick'],
                 'end_timeout': timestep.info['end_timeout'],
@@ -485,6 +504,10 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             render_info.update(timestep.info['navigation'])
             render_info.update(timestep.info['information'])
             render_info.update(timestep.info['action'])
+            if render_buffer_gt is not None:
+                render_buffer = np.concatenate([render_buffer, render_buffer_gt], axis=1)
+            # else:
+            #     render_buffer = np.concatenate([render_buffer, render_buffer], axis=1)
             visualizer.paint(render_buffer, render_info)
             visualizer.run_visualize()
 
