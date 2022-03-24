@@ -2,14 +2,14 @@ from easydict import EasyDict
 
 ppo_config = dict(
     exp_name='ppo21_bev32_lr1e4_bs128_ns3000_update5_train_ft',
-    enable_eval=False,
-    only_eval=False,
+    enable_eval=True,
+    only_eval=True,
     env=dict(
-        collector_env_num=1,
-        evaluator_env_num=0,
+        collector_env_num=0,
+        evaluator_env_num=17,
         simulator=dict(
             town='Town01',
-            spawn_manner="near",  # random, near
+            spawn_manner="random",  # random, near
             delta_seconds=0.1,
             disable_two_wheels=True,
             verbose=False,
@@ -97,15 +97,15 @@ ppo_config = dict(
                 retry_type='renew',
                 step_timeout=120,
                 reset_timeout=120,
-                # visualize=dict(
-                #             type='birdview',
-                #             # outputs=['video'],
-                #         ),
+                visualize=dict(
+                            type='birdview',
+                            outputs=['video'],
+                        ),
             )
         ),
         wrapper=dict(
-            collect=dict(suite='train_akira_turn_group', suite_n_vehicles=50, suite_n_pedestrians=50, ),
-            eval=dict(suite='train_akira_turn_group', suite_n_vehicles=50, suite_n_pedestrians=50, ),
+            collect=dict(suite='left2turn', suite_n_vehicles=50, suite_n_pedestrians=50, ),
+            eval=dict(suite='left2turn', suite_n_vehicles=50, suite_n_pedestrians=50, ),
         ),
     ),
     server=[
@@ -131,7 +131,7 @@ ppo_config = dict(
             learner=dict(
                 hook=dict(
                     log_show_after_iter=1000,
-                    #load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-tst_with_car_nodet-2022-02-26-14-15-50/ckpt/iteration_69000.pth.tar',
+                    load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-train_midleft_dynamic_nodet_rndspwn-2022-03-04-14-15-43/ckpt/iteration_33000.pth.tar',
                     save_ckpt_after_iter=3000,
                 ),
             ),
@@ -150,7 +150,7 @@ ppo_config = dict(
         eval=dict(
             evaluator=dict(
                 eval_freq=3000,
-                n_episode=20,
+                n_episode=50,
                 stop_rate=1.0,
                 transform_obs=True,
                 eval_once=True
