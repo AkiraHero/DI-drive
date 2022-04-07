@@ -34,8 +34,20 @@ DEFAULT_STEER_LIST = [
 
 def get_obs_out(obs):
     obs_out = {
-        'birdview': obs['birdview'][..., [0, 1, 5, 6, 8, 7]],
-        'speed': (obs['speed'] / 25).astype(np.float32),
+        # 'birdview': obs['birdview'][..., [0, 1, 5, 6, 8, 7]],
+        # 'speed': (obs['speed'] / 25).astype(np.float32),
+
+        'velocity_local': np.array(obs['velocity_local'] / 80.0).reshape(-1, 1),
+        'acceleration_local': np.array(obs['acceleration_local'] / 200.0).reshape(-1, 1),
+        'heading_diff': np.array(obs['heading_diff'] / 180.0).reshape(-1, 1),
+        'last_steer': np.array(obs['last_steer']).reshape(-1, 1),
+        'collide_wall': np.array(obs['collide_wall']).reshape(-1, 1),
+        'collide_obj': np.array(obs['collide_obj']).reshape(-1, 1),
+        'way_curvature': np.array(obs['waypoint_curvature'] / 10.0).reshape(-1, 1),
+        'bev_obj': obs['birdview'][..., 5:6] + obs['birdview'][..., 6:7],
+        'bev_road': obs['birdview'][..., 0:1] + obs['birdview'][..., 1:2],
+
+
 #        'bev_elements': obs['birdview_initial_dict']
     }
     if 'toplidar' in obs.keys():

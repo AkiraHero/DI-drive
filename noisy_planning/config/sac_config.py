@@ -2,12 +2,15 @@ from easydict import EasyDict
 
 sac_config = dict(
     exp_name='sac2_bev32_buf2e5_lr1e4_bs128_ns3000_update4_train_ft',
+    enable_eval=False,
+    only_eval=False,
     env=dict(
-        collector_env_num=15,
-        evaluator_env_num=1,
+        collector_env_num=1,
+        evaluator_env_num=0,
         simulator=dict(
             town='Town01',
-            delta_seconds=0.05,
+            spawn_manner="random",  # random, near
+            delta_seconds=0.1,
             disable_two_wheels=True,
             verbose=False,
             waypoint_num=32,
@@ -28,8 +31,8 @@ sac_config = dict(
                     type='lidar',
                     channels=64,
                     range=32,
-                    points_per_second=1280000,
-                    rotation_frequency=20,
+                    points_per_second=640000,
+                    rotation_frequency=10,
                     upper_fov=10.0,
                     lower_fov=-45.0,
                     position=[0, 0.0, 1.6],
@@ -61,10 +64,14 @@ sac_config = dict(
         stuck_is_failure=True,
         ignore_light=True,
         ran_light_is_failure=False,
-        off_road_is_failure=True,
-        wrong_direction_is_failure=True,
+        off_road_is_failure=False,
+        wrong_direction_is_failure=False,
         off_route_is_failure=True,
-        off_route_distance=7.5,
+        off_route_distance=15,
+        reward_func="racing_reward",
+        success_distance=2.0,
+        success_reward=0,
+        failure_reward=0,
         replay_path='./sac_video',
         visualize=dict(
             type='birdview',
@@ -90,22 +97,22 @@ sac_config = dict(
             )
         ),
         wrapper=dict(
-            collect=dict(suite='train_akira', ),
-            eval=dict(suite='eval_akira', ),
+            collect=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
+            eval=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
         ),
     ),
     server=[
-        dict(carla_host='localhost', carla_ports=[9000, 9032, 2]),
+        dict(carla_host='localhost', carla_ports=[9000, 9034, 2]),
     ],
     policy=dict(
         cuda=True,
         model=dict(
-            obs_shape=[5, 160, 160],
+            obs_shape=[1, 160, 160],
             action_shape=2,
             twin_critic=True
         ),
         learn=dict(
-            batch_size=128,
+            batch_size=5,
             learning_rate_q=1e-4,
             learning_rate_policy=1e-4,
             learning_rate_value=1e-4,
@@ -121,21 +128,22 @@ sac_config = dict(
         ),
         collect=dict(
             tail_len=300,  # only valid when using SampleTailCollector
-            pre_sample_num=3000,
-            n_sample=3000,
+            pre_sample_num=30,
+            n_sample=30,
             noise_sigma=0.1,
             collector=dict(
-                collect_print_freq=1000,
+                collect_print_freq=500,
                 deepcopy_obs=True,
                 transform_obs=True,
             ),
         ),
         eval=dict(
             evaluator=dict(
-                eval_freq=5000,
-                n_episode=5,
-                stop_rate=0.7,
+                eval_freq=3000,
+                n_episode=20,
+                stop_rate=1.0,
                 transform_obs=True,
+                eval_once=False,
             ),
         ),
         other=dict(

@@ -6,7 +6,7 @@ from typing import Any, Dict
 from gym import spaces
 
 from .base_drive_env import BaseDriveEnv
-from core.simulators import CarlaScenarioSimulator
+from core.simulators.carla_scenario_simulator import CarlaScenarioSimulator
 from core.utils.others.visualizer import Visualizer
 from core.utils.simulator_utils.carla_utils import visualize_birdview
 

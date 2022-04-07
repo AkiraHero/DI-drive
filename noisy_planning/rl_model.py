@@ -5,6 +5,77 @@ from ding.model.common.head import DuelingHead, RegressionHead, Reparameterizati
 
 ########## image encode for rl ########
 
+
+class BEVVehicleStateEncoder(nn.Module):
+    def __init__(
+            self,
+            obs_shape: Tuple,
+            hidden_dim_list: List,
+            embedding_size: int,
+            kernel_size: List = [8, 4, 3],
+            stride: List = [4, 2, 1],
+    ) -> None:
+        super().__init__()
+        assert len(kernel_size) == len(stride), (kernel_size, stride)
+        self._obs_shape = obs_shape
+        self._embedding_size = embedding_size
+        self._hidden_dim_list = hidden_dim_list
+        self._kernel_size = kernel_size
+        self._stride = stride
+
+        self._relu = nn.ReLU()
+
+        self.bev_road_model = self.get_cnn()
+        self.bev_obj_model = self.get_cnn()
+        self.state_model = self.get_linear_encoder()
+
+    def get_linear_encoder(self):
+        l1 = nn.Linear(42, 128)
+        l2 = nn.Linear(128, 256)
+        l3 = nn.Linear(256, 64)
+        layers = [l1, self._relu, l2, self._relu, l3, self._relu]
+        return nn.Sequential(*layers)
+
+
+    def get_cnn(self):
+        layers = []
+        input_dim = self._obs_shape[0]
+        for i in range(len(self._hidden_dim_list)):
+            layers.append(nn.Conv2d(input_dim, self._hidden_dim_list[i], self._kernel_size[i], self._stride[i]))
+            layers.append(self._relu)
+            if i == 0:
+                layers.append(nn.MaxPool2d(kernel_size=3, stride=2, padding=1))
+            input_dim = self._hidden_dim_list[i]
+        layers.append(nn.Flatten())
+        cnn_layers = nn.Sequential(*layers)
+        flatten_size = self._get_flatten_size(cnn_layers)
+        linear_tail = nn.Linear(flatten_size, 128)
+        layers.append(linear_tail)
+        return nn.Sequential(*layers)
+
+    def _get_flatten_size(self, m) -> int:
+        test_data = torch.randn(1, *self._obs_shape)
+        with torch.no_grad():
+            output = m(test_data)
+        return output.shape[1]
+
+    def forward(self, data: Dict) -> torch.Tensor:
+        road_img = data['bev_road'].permute(0, 3, 1, 2)
+        obj_img = data['bev_obj'].permute(0, 3, 1, 2)
+        state_vec = torch.cat([data['velocity_local'],
+                               data['acceleration_local'],
+                               data['heading_diff'],
+                               data['last_steer'],
+                               data['collide_wall'],
+                               data['collide_obj'],
+                               data['way_curvature']], dim=1).squeeze(-1) # dim: bs, colume vector
+        road_embedding = self.bev_road_model(road_img)
+        obj_embedding = self.bev_obj_model(obj_img)
+        state_embedding = self.state_model(state_vec)
+        return torch.cat([state_embedding, road_embedding, obj_embedding], dim=1)
+
+
+
 class BEVSpeedConvEncoder(nn.Module):
     """
     Convolutional encoder of Bird-eye View image and speed input. It takes a BeV image and a speed scalar as input.
@@ -260,7 +331,7 @@ class SACRLModel(nn.Module):
             action_shape: Union[int, tuple] = 2,
             share_encoder: bool = False,
             encoder_hidden_size_list: List = [64, 128, 256],
-            encoder_embedding_size: int = 512,
+            encoder_embedding_size: int = 320,
             twin_critic: bool = False,
             actor_head_hidden_size: int = 512,
             actor_head_layer_num: int = 1,
@@ -278,14 +349,14 @@ class SACRLModel(nn.Module):
         self.twin_critic = twin_critic
         self.share_encoder = share_encoder
         if self.share_encoder:
-            self.actor_encoder = self.critic_encoder = BEVSpeedConvEncoder(
+            self.actor_encoder = self.critic_encoder = BEVVehicleStateEncoder(
                 self._obs_shape, encoder_hidden_size_list, encoder_embedding_size, [3, 3, 3], [2, 2, 2]
             )
         else:
-            self.actor_encoder = BEVSpeedConvEncoder(
+            self.actor_encoder = BEVVehicleStateEncoder(
                 self._obs_shape, encoder_hidden_size_list, encoder_embedding_size, [3, 3, 3], [2, 2, 2]
             )
-            self.critic_encoder = BEVSpeedConvEncoder(
+            self.critic_encoder = BEVVehicleStateEncoder(
                 self._obs_shape, encoder_hidden_size_list, encoder_embedding_size, [3, 3, 3], [2, 2, 2]
             )
 
@@ -305,7 +376,7 @@ class SACRLModel(nn.Module):
             if self.share_encoder:
                 self._twin_encoder = self.actor_encoder
             else:
-                self._twin_encoder = BEVSpeedConvEncoder(self._obs_shape, encoder_hidden_size_list, encoder_embedding_size, [3, 3, 3], [2, 2, 2])
+                self._twin_encoder = BEVVehicleStateEncoder(self._obs_shape, encoder_hidden_size_list, encoder_embedding_size, [3, 3, 3], [2, 2, 2])
             self.critic = nn.ModuleList()
             for _ in range(2):
                 self.critic.append(

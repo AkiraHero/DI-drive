@@ -7,7 +7,7 @@ from gym import spaces
 from collections import defaultdict
 
 from .base_drive_env import BaseDriveEnv
-from core.simulators import CarlaSimulator
+from core.simulators.carla_simulator import CarlaSimulator
 from core.utils.others.visualizer import Visualizer
 from core.utils.simulator_utils.carla_utils import visualize_birdview
 from core.utils.env_utils.stuck_detector import StuckDetector
@@ -118,6 +118,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._failure_reward = self._cfg.failure_reward
         self._max_speed = self._cfg.max_speed
         self._collided = False
+        self._collided_info = None
         self._stuck = False
         self._ran_light = False
         self._off_road = False
@@ -137,6 +138,11 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._reward_func = self.__getattribute__(self._cfg.reward_func)
         self._suite_name = None
         self._failure_reason = None
+
+
+        # last obs
+        self._last_steer_obs = 0
+        self._last_state_obs = None
 
     def _init_carla_simulator(self) -> None:
         if not self._use_local_carla:
@@ -250,13 +256,14 @@ class SimpleCarlaEnv(BaseDriveEnv):
         obs = self.get_observations()
 
         self._collided = self._simulator.collided
+        self._collided_info = self._simulator.collided_info
         self._stuck = self._stuck_detector.stuck
         self._ran_light = self._simulator.ran_light
         self._off_road = self._simulator.off_road
         self._wrong_direction = self._simulator.wrong_direction
 
         location = self._simulator_databuffer['state']['location'][:2]
-        target = self._simulator_databuffer['navigation']['target']
+        target = self._simulator_databuffer['navigation']['target'][:2]
         self._off_route = np.linalg.norm(location - target) >= self._off_route_distance
         self._reward, reward_info = self._reward_func()
 
@@ -364,6 +371,14 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._failure_reason = None
         return False
 
+    @staticmethod
+    def angle(vec1, vec2):
+        cos = vec1.dot(vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2) + 1e-10)
+        cos = np.clip(cos, -1, 1)
+        angle = np.arccos(cos)
+        angle = np.clip(angle, 0, np.pi)
+        return angle
+
     def get_observations(self) -> Dict:
         """
         Get observations from simulator. The sensor data, navigation, state and information in simulator
@@ -378,13 +393,36 @@ class SimpleCarlaEnv(BaseDriveEnv):
         sensor_data = self._simulator.get_sensor_data()
         information = self._simulator.get_information()
 
+        # todo: all "last" record should be located here
+        steer = 0
+
         self._simulator_databuffer['state'] = state
         self._simulator_databuffer['navigation'] = navigation
         self._simulator_databuffer['information'] = information
         if 'action' not in self._simulator_databuffer:
             self._simulator_databuffer['action'] = dict()
+        else:
+            steer = self._simulator_databuffer['action'].get('steer', 0)
         if not navigation['agent_state'] == 4 or self._ignore_light:
             self._stuck_detector.tick(state['speed'])
+
+        # cal heading diff
+        heading_diff = state['yaw'] - navigation['node_yaw']
+        while heading_diff < -180.0:
+            heading_diff += 360.0
+        while heading_diff > 180.0:
+            heading_diff -= 360.0
+
+        # collision label
+        collide_with_wall = False
+        collide_with_obj = False
+        if self._collided:
+            if 'vehicle' in self._collided_info[1] or 'walker' in self._collided_info[1]:
+                collide_with_obj = True
+            else:
+                collide_with_wall = True
+
+
 
         obs.update(sensor_data)
         obs.update(
@@ -399,6 +437,15 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 'command': navigation['command'],
                 'speed': np.float32(state['speed']),
                 'speed_limit': np.float32(navigation['speed_limit']),
+
+                'velocity_local': np.float32(state['velocity_local']),
+                'acceleration_local': np.float32(state['acceleration_local']),
+                'heading_diff': np.float32(heading_diff),
+                'collide_wall': np.float32(collide_with_wall),
+                'collide_obj': np.float32(collide_with_obj),
+                'waypoint_curvature': np.float32(navigation['waypoint_curvature']),
+                'last_steer': self._last_steer_obs,
+
                 'location': np.float32(state['location']),
                 'forward_vector': np.float32(state['forward_vector']),
                 'acceleration': np.float32(state['acceleration']),
@@ -419,6 +466,11 @@ class SimpleCarlaEnv(BaseDriveEnv):
             self._render_buffer = sensor_data[self._visualize_cfg.type].copy()
             if self._visualize_cfg.type == 'birdview':
                 self._render_buffer = visualize_birdview(self._render_buffer)
+
+        # update last
+        self._last_state_obs = state
+        self._last_steer_obs = steer
+
         return obs
 
     # https://github.com/cjy1992/gym-carla/blob/master/gym_carla/envs/carla_env.py
@@ -606,7 +658,182 @@ class SimpleCarlaEnv(BaseDriveEnv):
             total_reward += reward_dict[rt]
 
         return total_reward, enabled_rw_info
-    
+
+    def racing_reward(self) -> Tuple[float, Dict]:
+        """
+        Compute reward for current frame, with details returned in a dict. In short, in contains goal reward,
+        route following reward calculated by route length in current and last frame, some navigation attitude reward
+        with respective to target waypoint, and failure reward by checking each failure event.
+
+        :Returns:
+            Tuple[float, Dict]: Total reward value and detail for each value.
+        """
+
+        def dist(loc1, loc2):
+            return ((loc1[0] - loc2[0]) ** 2 + (loc1[1] - loc2[1]) ** 2) ** 0.5
+
+        def angle(vec1, vec2):
+            cos = vec1.dot(vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2) + 1e-10)
+            cos = np.clip(cos, -1, 1)
+            angle = np.arccos(cos)
+            angle = np.clip(angle, 0, np.pi)
+            return angle
+
+        # moving distance
+        moving_reward = 0
+        if self._last_state_obs:
+            last_location = self._last_state_obs['location']
+            location = self._simulator_databuffer['state']['location']
+            location_change = location - last_location
+            # project to waypoint direction
+            direction = self._simulator_databuffer['navigation']['node_forward']
+            moving_dis_proj = (location_change * direction).sum()
+            moving_reward = moving_dis_proj
+
+
+        # collision reward
+        collision_static_reward = 0
+        collision_dynamic_reward = 0
+        speed = self._simulator_databuffer['state']['speed'] / 3.6
+        if self._collided:
+            if 'vehicle' in self._collided_info[1]:
+                collision_dynamic_reward = -speed ** 2
+            elif 'walker' in self._collided_info[1]:
+                collision_dynamic_reward = -speed ** 2
+            else:
+                collision_static_reward = -speed ** 2
+
+
+
+
+
+        # goal reward
+        goal_reward = 0
+        plan_distance = self._simulator.end_distance
+        if self.is_success():
+            goal_reward += self._success_reward
+        elif self.is_failure():
+            goal_reward -= 1
+
+        # distance reward
+        location = self._simulator_databuffer['state']['location']
+        target = self._simulator_databuffer['navigation']['target']
+        target_distance = dist(target, location)
+        cur_distance = plan_distance + target_distance
+        if self._last_distance is None:
+            distance_reward = 0
+        else:
+            distance_reward = np.clip((self._last_distance - cur_distance) * 2, 0, 1)
+        self._last_distance = cur_distance
+
+        # state reward: speed, angle, steer, mid lane
+        speed = self._simulator_databuffer['state']['speed'] / 3.6
+        speed_limit = self._simulator_databuffer['navigation']['speed_limit'] / 3.6
+        speed_limit = min(self._max_speed, speed_limit)
+        agent_state = self._simulator_databuffer['navigation']['agent_state']
+        target_speed = speed_limit
+        if agent_state == 2 or agent_state == 3:
+            target_speed = 0
+        elif agent_state == 4 and not self._ignore_light:
+            target_speed = 0
+        # speed_reward = 1 - abs(speed - target_speed) / speed_limit
+        speed_reward = 0
+        if speed < target_speed / 5:
+            speed_reward -= 1
+        if speed > target_speed:
+            speed_reward -= 1
+
+        forward_vector = self._simulator_databuffer['state']['forward_vector']
+        target_forward = self._simulator_databuffer['navigation']['target_forward']
+        angle_reward = 3 * (0.1 - angle(forward_vector, target_forward) / np.pi)
+
+        steer = self._simulator_databuffer['action'].get('steer', 0)
+        command = self._simulator_databuffer['navigation']['command']
+        steer_reward = 0.5
+        if abs(steer - self._last_steer) > 0.5:
+            steer_reward -= 0.2
+        if command == 1 and steer > 0.1:
+            steer_reward = 0
+        elif command == 2 and steer < -0.1:
+            steer_reward = 0
+        elif (command == 3 or command == 4) and abs(steer) > 0.3:
+            steer_reward = 0
+        self._last_steer = steer
+
+        waypoint_list = self._simulator_databuffer['navigation']['waypoint_list']
+
+        # todo: the lane mid dis should be checked carefully in turn area / open road-crossing
+        lane_mid_dis = abs(lane_mid_distance(waypoint_list, location))
+        lrw = 0.0
+        if lane_mid_dis < 0.1:
+            lrw = 0.3
+        elif lane_mid_dis < 0.3:
+            lrw = 0.1
+        elif lane_mid_dis < 0.6:
+            lrw = 0.0
+        elif lane_mid_dis < 0.8:
+            lrw = -0.3
+        elif lane_mid_dis < 1.0:
+            lrw = -0.5
+        else:
+            lrw = -2.0
+        lane_reward = lrw
+
+        failure_reward = 0
+        # if self._col_is_failure and self._collided:
+        #     failure_reward += self._failure_reward
+        # elif self._stuck_is_failure and self._stuck:
+        #     failure_reward += self._failure_reward
+        # elif self._off_road_is_failure and self._off_road:
+        #     failure_reward += self._failure_reward
+        # elif self._ran_light_is_failure and not self._ignore_light and self._ran_light:
+        #     failure_reward += self._failure_reward
+        # elif self._wrong_direction_is_failure and self._wrong_direction:
+        #     failure_reward += self._failure_reward
+        # add weight to failure reward
+        #failure_reward *= 50
+
+        if self.is_failure():
+            failure_reward = self._failure_reward
+
+
+
+
+        total_reward = 0
+        # stage 1
+        lambda_wall = 0.005
+        lambda_car = 0.005
+        total_reward = moving_reward + lambda_wall * collision_static_reward
+        enabled_rw_info = {
+            'moving_reward': moving_reward,
+            'collision_static_reward': collision_static_reward,
+            'lambda_wall': lambda_wall
+        }
+
+
+        # reward_info = {}
+        # reward_info['goal_reward'] = goal_reward
+        # reward_info['distance_reward'] = distance_reward
+        # reward_info['speed_reward'] = speed_reward
+        # reward_info['angle_reward'] = angle_reward
+        # reward_info['steer_reward'] = steer_reward
+        # reward_info['lane_reward'] = lane_reward
+        # reward_info['failure_reward'] = failure_reward
+
+        # reward_dict = {
+        #     'goal': goal_reward,
+        #     'distance': distance_reward,
+        #     'speed': speed_reward,
+        #     'angle': angle_reward,
+        #     'steer': steer_reward,
+        #     'lane': lane_reward,
+        #     'failure': failure_reward
+        # }
+        # enabled_rw_info = {rt: reward_dict[rt] for rt in self._reward_type}
+        # for rt in self._reward_type:
+        #     total_reward += reward_dict[rt]
+
+        return total_reward, enabled_rw_info
 
     def ini_compute_reward(self) -> Tuple[float, Dict]:
         """
