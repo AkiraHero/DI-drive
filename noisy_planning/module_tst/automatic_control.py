@@ -9,7 +9,7 @@
 
 from __future__ import print_function
 import sys
-sys.path.append("/home/xlju/Project/carla_099/PythonAPI/carla/dist/carla-0.9.9-py3.7-linux-x86_64.egg")
+sys.path.append("/home/akira/carla-0.9.11-py3.7-linux-x86_64.egg")
 """Example of automatic vehicle control from client side."""
 import argparse
 import collections
@@ -90,7 +90,7 @@ def get_actor_display_name(actor, truncate=250):
 class World(object):
     """ Class representing the surrounding environment """
 
-    def __init__(self, carla_world, hud, args):
+    def __init__(self, carla_world, hud, args, spw=None):
         """Constructor method"""
         self.world = carla_world
         try:
@@ -100,6 +100,8 @@ class World(object):
             print('  The server could not send the OpenDRIVE (.xodr) file:')
             print('  Make sure it exists, has the same name of your town, and is correct.')
             sys.exit(1)
+
+        self.spw = spw
         self.hud = hud
         self.player = None
         self.collision_sensor = None
@@ -114,6 +116,7 @@ class World(object):
         self.world.on_tick(hud.on_world_tick)
         self.recording_enabled = False
         self.recording_start = 0
+
 
     def restart(self, args):
         """Restart the world"""
@@ -140,15 +143,18 @@ class World(object):
             self.destroy()
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
 
-        while self.player is None:
-            if not self.map.get_spawn_points():
-                print('There are no spawn points available in your map/town.')
-                print('Please add some Vehicle Spawn Point to your UE4 scene.')
-                sys.exit(1)
-            spawn_points = self.map.get_spawn_points()
-            spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
-            self.player = self.world.try_spawn_actor(blueprint, spawn_point)
-            pass
+        if self.player is None and self.spw is not None:
+            self.player = self.world.try_spawn_actor(blueprint, self.spw)
+        else:
+            while self.player is None:
+                if not self.map.get_spawn_points():
+                    print('There are no spawn points available in your map/town.')
+                    print('Please add some Vehicle Spawn Point to your UE4 scene.')
+                    sys.exit(1)
+                spawn_points = self.map.get_spawn_points()
+                spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+                self.player = self.world.try_spawn_actor(blueprint, spawn_point)
+                pass
         # Set up the sensors.
         self.collision_sensor = CollisionSensor(self.player, self.hud)
         self.lane_invasion_sensor = LaneInvasionSensor(self.player, self.hud)
@@ -677,16 +683,26 @@ def game_loop(args):
     tot_target_reached = 0
     num_min_waypoints = 21
 
+
     try:
         client = carla.Client(args.host, args.port)
         client.set_timeout(4.0)
-
+        client.load_world("TOWN05")
         display = pygame.display.set_mode(
             (args.width, args.height),
             pygame.HWSURFACE | pygame.DOUBLEBUF)
 
         hud = HUD(args.width, args.height)
-        world = World(client.get_world(), hud, args)
+
+        st_spw_pt_inx = 266
+        ed_spw_pt_inx = 256
+        world_ = client.get_world()
+        map_ = world_.get_map()
+        spawn_points = map_.get_spawn_points()
+        st_point = spawn_points[st_spw_pt_inx]
+        ed_point = spawn_points[ed_spw_pt_inx]
+
+        world = World(world_, hud, args, spw=st_point)
         controller = KeyboardControl(world)
 
         if args.agent == "Roaming":
@@ -699,16 +715,19 @@ def game_loop(args):
                                    spawn_point.location.z))
         else:
             agent = BehaviorAgent(world.player, behavior=args.behavior)
-
-            spawn_points = world.map.get_spawn_points()
-            random.shuffle(spawn_points)
-
-            if spawn_points[0].location != agent.vehicle.get_location():
-                destination = spawn_points[0].location
+            if ed_point is not None:
+                agent.set_destination(agent.vehicle.get_location(), ed_point.location, clean=True)
             else:
-                destination = spawn_points[1].location
 
-            agent.set_destination(agent.vehicle.get_location(), destination, clean=True)
+                spawn_points = world.map.get_spawn_points()
+                random.shuffle(spawn_points)
+
+                if spawn_points[0].location != agent.vehicle.get_location():
+                    destination = spawn_points[0].location
+                else:
+                    destination = spawn_points[1].location
+
+                agent.set_destination(agent.vehicle.get_location(), destination, clean=True)
 
         clock = pygame.time.Clock()
 
@@ -757,6 +776,18 @@ def game_loop(args):
                     break
 
                 speed_limit = world.player.get_speed_limit()
+                velocity = world.player.get_velocity()
+                pose = world.player.get_transform()
+                forward_ = pose.get_forward_vector()
+                up_ = pose.get_up_vector()
+                right_ = pose.get_right_vector()
+
+                v_forward = velocity.x * forward_.x  + velocity.y * forward_.y + velocity.z * forward_.z
+                v_up = velocity.x * up_.x  + velocity.y * up_.y + velocity.z * up_.z
+                v_right = velocity.x * right_.x  + velocity.y * right_.y + velocity.z * right_.z
+                # print("velocity=", velocity.x, velocity.y, velocity.z)
+                print("velocity_local=", v_forward, v_right, v_up)
+
                 agent.get_local_planner().set_speed(speed_limit)
 
                 control = agent.run_step()

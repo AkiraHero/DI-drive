@@ -3,7 +3,7 @@ import sys
 
 import cv2
 
-sys.path.append("/home/xlju/carla-0.9.11-py3.7-linux-x86_64.egg")
+sys.path.append("/home/akira/carla-0.9.11-py3.7-linux-x86_64.egg")
 
 import carla
 import pygame
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     # set up carla client
     client = carla.Client("localhost", 9000)
     tm_port = 12345
-    town = 'TOWN01'
+    town = 'TOWN05'
     sync = True
     delta_seconds = 0.05
     tm = client.get_trafficmanager(tm_port)
@@ -91,8 +91,8 @@ if __name__ == '__main__':
     lane_inx = lane_img>0
     spawn_points_img[lane_inx] = 0
     cv2.imshow("spawn_points_img", spawn_points_img)
-    cv2.imwrite("town1_spw.png", spawn_points_img)
-    save_spw("spw_pts.pickle")
+    cv2.imwrite("town5_spw.png", spawn_points_img)
+    save_spw("spw_pts_t5.pickle")
     cv2.setMouseCallback("spawn_points_img", mouse_click)
     cv2.waitKey(-1)
 

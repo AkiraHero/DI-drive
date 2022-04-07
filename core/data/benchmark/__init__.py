@@ -20,6 +20,8 @@ def _add(suite_name, *args, **kwargs):
         town = 'Town02'
     elif 'Town04' in suite_name:
         town = 'Town04'
+    elif 'Town05' in suite_name:
+        town = 'Town05'
     else:
         raise Exception('No town specified: %s.' % suite_name)
 
@@ -52,6 +54,8 @@ def _add(suite_name, *args, **kwargs):
         suite = 'left2turn'
     elif 'rightturn' in suite_name:
         suite = 'rightturn'
+    elif 'race' in suite_name:
+        suite = 'race'
     else:
         raise Exception('No suite specified: %s.' % suite_name)
 
@@ -91,6 +95,7 @@ _add('leftturnTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_s
 _add('rightturnTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
 
 _add('left2turnTown01-akira', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
+_add('raceTown05', n_vehicles=50, n_pedestrians=50, weathers=WEATHER_single)
 
 #############################################################################
 
@@ -221,6 +226,7 @@ ALL_SUITES_ALIASES = {
     'train_akira_mid_turn_nocar': ['MTnocarTown01-akira'],
     'train_akira_turn_group' : ['leftturnTown01-akira', 'rightturnTown01-akira', 'gostraightTown01-akira'],
     'left2turn': ['left2turnTown01-akira'],
+    'race': ['raceTown05'],
     ###############################################
 
 

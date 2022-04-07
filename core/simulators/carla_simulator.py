@@ -183,6 +183,7 @@ class CarlaSimulator(BaseSimulator):
         self._timestamp = 0
         self._end_location = None
         self._collided = False
+        self._collided_info = None
         self._ran_light = False
         self._off_road = False
         self._wrong_direction = False
@@ -580,6 +581,9 @@ class CarlaSimulator(BaseSimulator):
         transform = CarlaDataProvider.get_transform(self._hero_actor)
         location = transform.location
         forward_vector = transform.get_forward_vector()
+        up_vector = transform.get_up_vector()
+        right_vector = transform.get_right_vector()
+
         acceleration = CarlaDataProvider.get_acceleration(self._hero_actor)
         angular_velocity = CarlaDataProvider.get_angular_velocity(self._hero_actor)
         velocity = CarlaDataProvider.get_speed_vector(self._hero_actor)
@@ -600,12 +604,22 @@ class CarlaSimulator(BaseSimulator):
         lane_location = lane_waypoint.transform.location
         lane_forward_vector = lane_waypoint.transform.rotation.get_forward_vector()
 
+
+
+        v_forward = velocity.x * forward_vector.x + velocity.y * forward_vector.y + velocity.z * forward_vector.z
+        v_up = velocity.x * up_vector.x + velocity.y * up_vector.y + velocity.z * up_vector.z
+        v_right = velocity.x * right_vector.x + velocity.y * right_vector.y + velocity.z * right_vector.z
+        a_forward = acceleration.x * forward_vector.x + acceleration.y * forward_vector.y + acceleration.z * forward_vector.z
+        a_up = acceleration.x * up_vector.x + acceleration.y * up_vector.y + acceleration.z * up_vector.z
+        a_right = acceleration.x * right_vector.x + acceleration.y * right_vector.y + acceleration.z * right_vector.z
         state = {
             'speed': speed,
             'location': np.array([location.x, location.y, location.z]),
-            'forward_vector': np.array([forward_vector.x, forward_vector.y]),
+            'forward_vector': np.array([forward_vector.x, forward_vector.y, forward_vector.z]),
             'acceleration': np.array([acceleration.x, acceleration.y, acceleration.z]),
             'velocity': np.array([velocity.x, velocity.y, velocity.z]),
+            'acceleration_local': np.array([a_forward, a_right, a_up]),
+            'velocity_local': np.array([v_forward, v_right, v_up]),
             'angular_velocity': np.array([angular_velocity.x, angular_velocity.y, angular_velocity.z]),
             'rotation': np.array([transform.rotation.pitch, transform.rotation.yaw, transform.rotation.roll]),
             'is_junction': is_junction,
@@ -613,6 +627,7 @@ class CarlaSimulator(BaseSimulator):
             'lane_forward': np.array([lane_forward_vector.x, lane_forward_vector.y]),
             'tl_state': light_state,
             'tl_dis': self._traffic_light_helper.active_light_dis,
+            'yaw': transform.rotation.yaw,
         }
         if lane_waypoint is None:
             state['lane_forward'] = None
@@ -684,6 +699,24 @@ class CarlaSimulator(BaseSimulator):
             wp_loc = wp.transform.location
             wp_vec = wp.transform.rotation.get_forward_vector()
             waypoint_location_list.append([wp_loc.x, wp_loc.y, wp_vec.x, wp_vec.y])
+        waypoint_curvature_list = []
+        for inx in range(len(waypoint_list) - 1):
+            wp = waypoint_list[inx]
+            wp_nxt = waypoint_list[inx + 1]
+
+            loc_diff = wp.transform.location - wp_nxt.transform.location
+            wp_dis = (loc_diff.x ** 2 + loc_diff.y ** 2 + loc_diff.z ** 2)
+            assert wp_dis > 0
+            wp_dis = wp_dis ** 0.5
+            node_yaw = wp.transform.rotation.yaw
+            node_yaw_nxt = wp_nxt.transform.rotation.yaw
+            wp_angle = node_yaw_nxt - node_yaw
+            while wp_angle < -180.0:
+                wp_angle += 360.0
+            while wp_angle > 180.0:
+                wp_angle -= 360.0
+            curvature = wp_angle / wp_dis
+            waypoint_curvature_list.append(curvature)
 
         if not self._off_road:
             current_waypoint = self._planner.current_waypoint
@@ -708,10 +741,12 @@ class CarlaSimulator(BaseSimulator):
             'agent_state': agent_state.value,
             'command': command.value,
             'node': np.array([node_location.x, node_location.y]),
-            'node_forward': np.array([node_forward.x, node_forward.y]),
-            'target': np.array([target_location.x, target_location.y]),
-            'target_forward': np.array([target_forward.x, target_forward.y]),
+            'node_forward': np.array([node_forward.x, node_forward.y, node_forward.z]),
+            'node_yaw': np.array(self._planner.node_waypoint.transform.rotation.yaw),
+            'target': np.array([target_location.x, target_location.y, target_location.z]),
+            'target_forward': np.array([target_forward.x, target_forward.y, target_forward.z]),
             'waypoint_list': np.array(waypoint_location_list),
+            'waypoint_curvature': np.array(waypoint_curvature_list),
             'speed_limit': np.array(speed_limit),
             'direction_list': np.array(direction_list)
         }
@@ -733,6 +768,10 @@ class CarlaSimulator(BaseSimulator):
             self._planner.run_step()
 
         self._collided = self._collision_sensor.collided
+        if self._collided:
+            self._collided_info = (self._collision_sensor.collided_obj_id, self._collision_sensor.collided_obj_typeid)
+        else:
+            self._collided_info = None
         self._traffic_light_helper.tick()
         self._ran_light = self._traffic_light_helper.ran_light
 
@@ -842,6 +881,10 @@ class CarlaSimulator(BaseSimulator):
     @property
     def collided(self) -> bool:
         return self._collided
+
+    @property
+    def collided_info(self) -> tuple:
+        return self._collided_info
 
     @property
     def ran_light(self) -> bool:

@@ -328,6 +328,8 @@ class CollisionSensor(object):
 
         self.collided = False
         self.collided_frame = -1
+        self.collided_obj_id = -1
+        self.collided_obj_typeid = -1
 
     @staticmethod
     def _on_collision(weak_self, event: Any) -> None:
@@ -340,6 +342,9 @@ class CollisionSensor(object):
         if intensity > self._threshold:
             self.collided = True
             self.collided_frame = event.frame
+            self.collided_obj_id = event.other_actor.id
+            self.collided_obj_typeid = event.other_actor.type_id
+
 
     def clear(self) -> None:
         """

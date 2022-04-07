@@ -1,4 +1,6 @@
 # system
+import sys
+sys.path.append("/home/akira/carla-0.9.11-py3.7-linux-x86_64.egg")
 import logging
 import argparse
 from functools import partial
