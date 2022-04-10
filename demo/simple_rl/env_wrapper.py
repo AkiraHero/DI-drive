@@ -33,14 +33,25 @@ DEFAULT_STEER_LIST = [
 
 
 def get_obs_out(obs):
+    # print('speed', obs['speed'])
+    # print('velocity_local', obs['velocity_local'])
+    # print('acceleration_local', obs['acceleration_local'])
+    # print('heading_diff', obs['heading_diff'])
+    # print('last_steer', obs['last_steer'])
+    # print('collide_wall', obs['collide_wall'])
+    # print('collide_obj', obs['collide_obj'])
+    # print('waypoint_curvature', obs['waypoint_curvature'])
+
+
+
     obs_out = {
         # 'birdview': obs['birdview'][..., [0, 1, 5, 6, 8, 7]],
         # 'speed': (obs['speed'] / 25).astype(np.float32),
 
-        'velocity_local': np.array(obs['velocity_local'] / 80.0).reshape(-1, 1),
-        'acceleration_local': np.array(obs['acceleration_local'] / 200.0).reshape(-1, 1),
-        'heading_diff': np.array(obs['heading_diff'] / 180.0).reshape(-1, 1),
-        'last_steer': np.array(obs['last_steer']).reshape(-1, 1),
+        'velocity_local': np.array(obs['velocity_local'] / 20.0).reshape(-1, 1),
+        'acceleration_local': np.array(obs['acceleration_local'] / 20.0).reshape(-1, 1),
+        'heading_diff': np.array(obs['heading_diff'] / 60.0).reshape(-1, 1),
+        'last_steer': np.array(np.clip(obs['last_steer'], -1.0, 1.0)).reshape(-1, 1),
         'collide_wall': np.array(obs['collide_wall']).reshape(-1, 1),
         'collide_obj': np.array(obs['collide_obj']).reshape(-1, 1),
         'way_curvature': np.array(obs['waypoint_curvature'] / 10.0).reshape(-1, 1),

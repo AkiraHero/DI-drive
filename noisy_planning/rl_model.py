@@ -60,15 +60,34 @@ class BEVVehicleStateEncoder(nn.Module):
         return output.shape[1]
 
     def forward(self, data: Dict) -> torch.Tensor:
-        road_img = data['bev_road'].permute(0, 3, 1, 2)
-        obj_img = data['bev_obj'].permute(0, 3, 1, 2)
-        state_vec = torch.cat([data['velocity_local'],
-                               data['acceleration_local'],
-                               data['heading_diff'],
-                               data['last_steer'],
-                               data['collide_wall'],
-                               data['collide_obj'],
-                               data['way_curvature']], dim=1).squeeze(-1) # dim: bs, colume vector
+        road_img = data['bev_road']
+        obj_img = data['bev_obj']
+        velocity_local = data['velocity_local']
+        acceleration_local = data['acceleration_local']
+        heading_diff = data['heading_diff']
+        last_steer = data['last_steer']
+        collide_wall = data['collide_wall']
+        collide_obj = data['collide_obj']
+        way_curvature = data['way_curvature']
+        if 3 == len(road_img.shape):  # fill batch_size dim
+            road_img = road_img.unsqueeze(0)
+            obj_img = obj_img.unsqueeze(0)
+            velocity_local = velocity_local.unsqueeze(0)
+            acceleration_local = acceleration_local.unsqueeze(0)
+            heading_diff = heading_diff.unsqueeze(0)
+            last_steer = last_steer.unsqueeze(0)
+            collide_wall = collide_wall.unsqueeze(0)
+            collide_obj = collide_obj.unsqueeze(0)
+            way_curvature = way_curvature.unsqueeze(0)
+        road_img = road_img.permute(0, 3, 1, 2)
+        obj_img = obj_img.permute(0, 3, 1, 2)
+        state_vec = torch.cat([velocity_local,
+                               acceleration_local,
+                               heading_diff,
+                               last_steer,
+                               collide_wall,
+                               collide_obj,
+                               way_curvature], dim=1).squeeze(-1) # dim: bs, colume vector
         road_embedding = self.bev_road_model(road_img)
         obj_embedding = self.bev_obj_model(obj_img)
         state_embedding = self.state_model(state_vec)
@@ -434,11 +453,11 @@ class PPORLModel(nn.Module):
             action_shape: Union[int, Tuple] = 2,
             share_encoder: bool = True,
             continuous: bool = True,
-            encoder_embedding_size: int = 512,
+            encoder_embedding_size: int = 320,
             encoder_hidden_size_list: List = [64, 128, 256],
-            actor_head_hidden_size: int = 512,
+            actor_head_hidden_size: int = 320,
             actor_head_layer_num: int = 1,
-            critic_head_hidden_size: int = 512,
+            critic_head_hidden_size: int = 320,
             critic_head_layer_num: int = 1,
             activation: Optional[nn.Module] = nn.ReLU(),
             norm_type: Optional[str] = None,
@@ -450,14 +469,14 @@ class PPORLModel(nn.Module):
         self._act_shape = action_shape
         self.share_encoder = share_encoder
         if self.share_encoder:
-            self.encoder = BEVSpeedConvEncoder(
+            self.encoder = BEVVehicleStateEncoder(
                 self._obs_shape, encoder_hidden_size_list, encoder_embedding_size, [3, 3, 3], [2, 2, 2]
             )
         else:
-            self.actor_encoder = BEVSpeedConvEncoder(
+            self.actor_encoder = BEVVehicleStateEncoder(
                 self._obs_shape, encoder_hidden_size_list, encoder_embedding_size, [3, 3, 3], [2, 2, 2]
             )
-            self.critic_encoder = BEVSpeedConvEncoder(
+            self.critic_encoder = BEVVehicleStateEncoder(
                 self._obs_shape, encoder_hidden_size_list, encoder_embedding_size, [3, 3, 3], [2, 2, 2]
             )
         self.critic_head = RegressionHead(

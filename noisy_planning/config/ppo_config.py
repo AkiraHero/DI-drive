@@ -64,15 +64,16 @@ ppo_config = dict(
         stuck_is_failure=True,
         ignore_light=True,
         ran_light_is_failure=False,
-        off_road_is_failure=True,
-        wrong_direction_is_failure=True,
+        off_road_is_failure=False,
+        wrong_direction_is_failure=False,
         off_route_is_failure=True,
-        off_route_distance=7.5,
-        reward_func="customized_compute_reward",
+        off_route_distance=10,
+        # reward_func="customized_compute_reward",
+        reward_func="racing_reward",
         #reward_type=['goal', 'distance', 'speed', 'angle', 'failure', 'lane'],
         success_distance=2.0,
-        success_reward=300,
-        failure_reward=-250,
+        success_reward=0,
+        failure_reward=0,
         replay_path='./ppo_video',
         visualize=None,
         manager=dict(
@@ -104,8 +105,8 @@ ppo_config = dict(
             )
         ),
         wrapper=dict(
-            collect=dict(suite='left2turn', suite_n_vehicles=50, suite_n_pedestrians=50, ),
-            eval=dict(suite='left2turn', suite_n_vehicles=50, suite_n_pedestrians=50, ),
+            collect=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
+            eval=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
         ),
     ),
     server=[
@@ -116,7 +117,7 @@ ppo_config = dict(
         nstep_return=False,
         on_policy=True,
         model=dict(
-            obs_shape=[6, 160, 160],
+            obs_shape=[1, 160, 160],
         ),
         learn=dict(
             epoch_per_collect=5,
@@ -153,7 +154,7 @@ ppo_config = dict(
                 n_episode=50,
                 stop_rate=1.0,
                 transform_obs=True,
-                eval_once=True
+                eval_once=False
             ),
         ),
     ),

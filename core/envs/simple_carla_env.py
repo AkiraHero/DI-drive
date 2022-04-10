@@ -1,5 +1,6 @@
 import os
 import time
+from tkinter.messagebox import NO
 import carla
 import numpy as np
 from typing import Any, Dict, Optional, Tuple
@@ -140,9 +141,9 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._failure_reason = None
 
 
-        # last obs
+        # update at the end of step(), reset in reset()
         self._last_steer_obs = 0
-        self._last_state_obs = None
+        self._last_location = None
 
     def _init_carla_simulator(self) -> None:
         if not self._use_local_carla:
@@ -214,10 +215,15 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._stuck_detector.clear()
         self._tick = 0
         self._reward = 0
+        # update in reward function, reset in reset()
         self._last_steer = 0
         self._last_distance = None
         self._timeout = self._simulator.end_timeout
         self._failure_reason = None
+
+        # update at the end of step(), reset in reset()
+        self._last_steer_obs = 0
+        self._last_location = None
 
         return self.get_observations()
 
@@ -311,6 +317,13 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 # self.logger.error("visual this is the 282 line of carla env")
                 self._visualizer = None
             # self.logger.error("done over.................................................................")
+
+
+        # update last
+        steer = self._simulator_databuffer['action'].get('steer', 0)
+        self._last_steer_obs = steer
+        self._last_location = self._simulator_databuffer['state']['location']
+
         return obs, self._reward, done, info
 
     def close(self) -> None:
@@ -465,12 +478,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 raise ValueError("visualize type {} not in sensor data!".format(self._visualize_cfg.type))
             self._render_buffer = sensor_data[self._visualize_cfg.type].copy()
             if self._visualize_cfg.type == 'birdview':
-                self._render_buffer = visualize_birdview(self._render_buffer)
-
-        # update last
-        self._last_state_obs = state
-        self._last_steer_obs = steer
-
+                self._render_buffer = visualize_birdview(self._render_buffer)        
         return obs
 
     # https://github.com/cjy1992/gym-carla/blob/master/gym_carla/envs/carla_env.py
@@ -681,27 +689,38 @@ class SimpleCarlaEnv(BaseDriveEnv):
 
         # moving distance
         moving_reward = 0
-        if self._last_state_obs:
-            last_location = self._last_state_obs['location']
+        if self._last_location is not None:
+            last_location = self._last_location
             location = self._simulator_databuffer['state']['location']
             location_change = location - last_location
             # project to waypoint direction
             direction = self._simulator_databuffer['navigation']['node_forward']
             moving_dis_proj = (location_change * direction).sum()
             moving_reward = moving_dis_proj
-
+            # print("============================================")
+            # print("action:", self._simulator_databuffer['action'])
+            # print("location_change", location_change)
+            # print("direction", direction)
+            # print("location", location)
+            # print("last_location", last_location)
+            # print("corresponding reward:", moving_reward)
 
         # collision reward
         collision_static_reward = 0
         collision_dynamic_reward = 0
         speed = self._simulator_databuffer['state']['speed'] / 3.6
         if self._collided:
+            self.logger.error("11!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             if 'vehicle' in self._collided_info[1]:
                 collision_dynamic_reward = -speed ** 2
             elif 'walker' in self._collided_info[1]:
                 collision_dynamic_reward = -speed ** 2
             else:
                 collision_static_reward = -speed ** 2
+                self.logger.error("2!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                self.logger.error('[Collide]'+"reward={}".format(collision_static_reward)+ ",speed={}".format(speed))
+        # print("corresponding speed:", speed)
+        # print("corresponding speed rw assume collission:", -speed ** 2)
 
 
 
