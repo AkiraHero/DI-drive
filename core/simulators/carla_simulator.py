@@ -717,6 +717,8 @@ class CarlaSimulator(BaseSimulator):
                 wp_angle -= 360.0
             curvature = wp_angle / wp_dis
             waypoint_curvature_list.append(curvature)
+        while len(waypoint_curvature_list) < self._waypoint_num:
+            waypoint_curvature_list.append(0.0)
 
         if not self._off_road:
             current_waypoint = self._planner.current_waypoint
