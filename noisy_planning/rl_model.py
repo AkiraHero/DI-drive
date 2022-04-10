@@ -5,7 +5,6 @@ from ding.model.common.head import DuelingHead, RegressionHead, Reparameterizati
 
 ########## image encode for rl ########
 
-
 class BEVVehicleStateEncoder(nn.Module):
     def __init__(
             self,
@@ -25,14 +24,14 @@ class BEVVehicleStateEncoder(nn.Module):
 
         self._relu = nn.ReLU()
 
-        self.bev_road_model = self.get_cnn()
-        self.bev_obj_model = self.get_cnn()
+        # self.bev_road_model = self.get_cnn()
+        # self.bev_obj_model = self.get_cnn()
         self.state_model = self.get_linear_encoder()
 
     def get_linear_encoder(self):
-        l1 = nn.Linear(42, 128)
-        l2 = nn.Linear(128, 256)
-        l3 = nn.Linear(256, 64)
+        l1 = nn.Linear(42 + 181, 256)
+        l2 = nn.Linear(256, 256)
+        l3 = nn.Linear(256, 128)
         layers = [l1, self._relu, l2, self._relu, l3, self._relu]
         return nn.Sequential(*layers)
 
@@ -60,8 +59,6 @@ class BEVVehicleStateEncoder(nn.Module):
         return output.shape[1]
 
     def forward(self, data: Dict) -> torch.Tensor:
-        road_img = data['bev_road']
-        obj_img = data['bev_obj']
         velocity_local = data['velocity_local']
         acceleration_local = data['acceleration_local']
         heading_diff = data['heading_diff']
@@ -69,9 +66,8 @@ class BEVVehicleStateEncoder(nn.Module):
         collide_wall = data['collide_wall']
         collide_obj = data['collide_obj']
         way_curvature = data['way_curvature']
-        if 3 == len(road_img.shape):  # fill batch_size dim
-            road_img = road_img.unsqueeze(0)
-            obj_img = obj_img.unsqueeze(0)
+        laser_beam = data['laser_obs']
+        if 1 == len(velocity_local.shape):  # fill batch_size dim
             velocity_local = velocity_local.unsqueeze(0)
             acceleration_local = acceleration_local.unsqueeze(0)
             heading_diff = heading_diff.unsqueeze(0)
@@ -79,19 +75,105 @@ class BEVVehicleStateEncoder(nn.Module):
             collide_wall = collide_wall.unsqueeze(0)
             collide_obj = collide_obj.unsqueeze(0)
             way_curvature = way_curvature.unsqueeze(0)
-        road_img = road_img.permute(0, 3, 1, 2)
-        obj_img = obj_img.permute(0, 3, 1, 2)
+            laser_beam = laser_beam.unsqueeze(0)
         state_vec = torch.cat([velocity_local,
                                acceleration_local,
                                heading_diff,
                                last_steer,
                                collide_wall,
                                collide_obj,
-                               way_curvature], dim=1).squeeze(-1) # dim: bs, colume vector
-        road_embedding = self.bev_road_model(road_img)
-        obj_embedding = self.bev_obj_model(obj_img)
+                               way_curvature,
+                               laser_beam], dim=1).squeeze(-1) # dim: bs, colume vector
         state_embedding = self.state_model(state_vec)
-        return torch.cat([state_embedding, road_embedding, obj_embedding], dim=1)
+        return state_embedding
+
+
+# class BEVVehicleStateEncoder(nn.Module):
+#     def __init__(
+#             self,
+#             obs_shape: Tuple,
+#             hidden_dim_list: List,
+#             embedding_size: int,
+#             kernel_size: List = [8, 4, 3],
+#             stride: List = [4, 2, 1],
+#     ) -> None:
+#         super().__init__()
+#         assert len(kernel_size) == len(stride), (kernel_size, stride)
+#         self._obs_shape = obs_shape
+#         self._embedding_size = embedding_size
+#         self._hidden_dim_list = hidden_dim_list
+#         self._kernel_size = kernel_size
+#         self._stride = stride
+#
+#         self._relu = nn.ReLU()
+#
+#         self.bev_road_model = self.get_cnn()
+#         self.bev_obj_model = self.get_cnn()
+#         self.state_model = self.get_linear_encoder()
+#
+#     def get_linear_encoder(self):
+#         l1 = nn.Linear(42, 128)
+#         l2 = nn.Linear(128, 256)
+#         l3 = nn.Linear(256, 64)
+#         layers = [l1, self._relu, l2, self._relu, l3, self._relu]
+#         return nn.Sequential(*layers)
+#
+#
+#     def get_cnn(self):
+#         layers = []
+#         input_dim = self._obs_shape[0]
+#         for i in range(len(self._hidden_dim_list)):
+#             layers.append(nn.Conv2d(input_dim, self._hidden_dim_list[i], self._kernel_size[i], self._stride[i]))
+#             layers.append(self._relu)
+#             if i == 0:
+#                 layers.append(nn.MaxPool2d(kernel_size=3, stride=2, padding=1))
+#             input_dim = self._hidden_dim_list[i]
+#         layers.append(nn.Flatten())
+#         cnn_layers = nn.Sequential(*layers)
+#         flatten_size = self._get_flatten_size(cnn_layers)
+#         linear_tail = nn.Linear(flatten_size, 128)
+#         layers.append(linear_tail)
+#         return nn.Sequential(*layers)
+#
+#     def _get_flatten_size(self, m) -> int:
+#         test_data = torch.randn(1, *self._obs_shape)
+#         with torch.no_grad():
+#             output = m(test_data)
+#         return output.shape[1]
+#
+#     def forward(self, data: Dict) -> torch.Tensor:
+#         road_img = data['bev_road']
+#         obj_img = data['bev_obj']
+#         velocity_local = data['velocity_local']
+#         acceleration_local = data['acceleration_local']
+#         heading_diff = data['heading_diff']
+#         last_steer = data['last_steer']
+#         collide_wall = data['collide_wall']
+#         collide_obj = data['collide_obj']
+#         way_curvature = data['way_curvature']
+#         if 3 == len(road_img.shape):  # fill batch_size dim
+#             road_img = road_img.unsqueeze(0)
+#             obj_img = obj_img.unsqueeze(0)
+#             velocity_local = velocity_local.unsqueeze(0)
+#             acceleration_local = acceleration_local.unsqueeze(0)
+#             heading_diff = heading_diff.unsqueeze(0)
+#             last_steer = last_steer.unsqueeze(0)
+#             collide_wall = collide_wall.unsqueeze(0)
+#             collide_obj = collide_obj.unsqueeze(0)
+#             way_curvature = way_curvature.unsqueeze(0)
+#         road_img = road_img.permute(0, 3, 1, 2)
+#         obj_img = obj_img.permute(0, 3, 1, 2)
+#         state_vec = torch.cat([velocity_local,
+#                                acceleration_local,
+#                                heading_diff,
+#                                last_steer,
+#                                collide_wall,
+#                                collide_obj,
+#                                way_curvature], dim=1).squeeze(-1) # dim: bs, colume vector
+#         road_embedding = self.bev_road_model(road_img)
+#         obj_embedding = self.bev_obj_model(obj_img)
+#         state_embedding = self.state_model(state_vec)
+#         return torch.cat([state_embedding, road_embedding, obj_embedding], dim=1)
 
 
 
@@ -350,7 +432,7 @@ class SACRLModel(nn.Module):
             action_shape: Union[int, tuple] = 2,
             share_encoder: bool = False,
             encoder_hidden_size_list: List = [64, 128, 256],
-            encoder_embedding_size: int = 320,
+            encoder_embedding_size: int = 128,
             twin_critic: bool = False,
             actor_head_hidden_size: int = 512,
             actor_head_layer_num: int = 1,
@@ -453,11 +535,11 @@ class PPORLModel(nn.Module):
             action_shape: Union[int, Tuple] = 2,
             share_encoder: bool = True,
             continuous: bool = True,
-            encoder_embedding_size: int = 320,
+            encoder_embedding_size: int = 128,
             encoder_hidden_size_list: List = [64, 128, 256],
-            actor_head_hidden_size: int = 320,
+            actor_head_hidden_size: int = 128,
             actor_head_layer_num: int = 1,
-            critic_head_hidden_size: int = 320,
+            critic_head_hidden_size: int = 128,
             critic_head_layer_num: int = 1,
             activation: Optional[nn.Module] = nn.ReLU(),
             norm_type: Optional[str] = None,

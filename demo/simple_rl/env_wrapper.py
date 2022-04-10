@@ -7,6 +7,59 @@ import gym
 from core.envs import BaseDriveEnv
 from ding.torch_utils.data_helper import to_ndarray
 
+import cv2
+def plot_pcl(points):
+    points = points[:, :3]
+    pixel_size = 0.08
+    cx = 800
+    cy = 600
+    img_width = 1600
+    img_height = 1200
+    img = np.zeros((img_height, img_width, 3), np.uint8)
+
+    pt_num = points.shape[0]
+    valid_pt_num = 0
+    for i in range(pt_num):
+        x = points[i, 0]
+        y = points[i, 1]
+        # to adapt to carla ordinate: exchange x and y
+        py = int(x / pixel_size + cx)
+        px = int(y / pixel_size + cy)
+        range_ = (x ** 2 + y ** 2) ** 0.5
+        theta = np.arctan2(y, x)
+        if abs(theta) > np.pi / 2.0 or abs(y) < 0.0001:
+            continue
+
+        if py < 0 or py >= img_height or px < 0 or px >= img_width:
+            continue
+        valid_pt_num += 1
+        cv2.circle(img, (px, py), 1, (255, 0, 255), 1)
+
+    py = int(cx)
+    px = int(cy)
+    cv2.circle(img, (px, py), 2, (0, 0, 255), 2)
+    print("valid=", valid_pt_num)
+    return cv2.flip(img, 0)
+
+
+def process_line_lidar(points):
+    points = points[:, :3]
+    azimuth = np.arctan2(points[:, 1], points[:, 0])
+    inx,  = ((abs(azimuth) < np.pi / 2.0) & (abs(points[:, 1]) > 0.0001)).nonzero()
+    points = points[inx, :]
+    azimuth = np.round(azimuth[inx] / np.pi * 180.0).astype(int)
+
+    ranges = (points[:, 0] ** 2 + points[:, 1] ** 2) ** 0.5
+    max_dis = 20.0
+    slots = {i: max_dis for i in range(-90, 91)}
+    for i, j in zip(azimuth, ranges):
+        if j < slots[i]:
+            slots[i] = j
+    laser_obs = []
+    for i in range(-90, 91):
+        laser_obs.append(slots[i])
+    return np.array(laser_obs).reshape(-1, 1)
+
 
 DEFAULT_ACC_LIST = [
     (0, 1),
@@ -42,8 +95,7 @@ def get_obs_out(obs):
     # print('collide_obj', obs['collide_obj'])
     # print('waypoint_curvature', obs['waypoint_curvature'])
 
-
-
+    laser_obs = process_line_lidar(obs['linelidar'])
     obs_out = {
         # 'birdview': obs['birdview'][..., [0, 1, 5, 6, 8, 7]],
         # 'speed': (obs['speed'] / 25).astype(np.float32),
@@ -55,12 +107,15 @@ def get_obs_out(obs):
         'collide_wall': np.array(obs['collide_wall']).reshape(-1, 1),
         'collide_obj': np.array(obs['collide_obj']).reshape(-1, 1),
         'way_curvature': np.array(obs['waypoint_curvature'] / 10.0).reshape(-1, 1),
-        'bev_obj': obs['birdview'][..., 5:6] + obs['birdview'][..., 6:7],
-        'bev_road': obs['birdview'][..., 0:1] + obs['birdview'][..., 1:2],
+        'laser_obs': laser_obs / 20.0,
+        # 'bev_obj': obs['birdview'][..., 5:6] + obs['birdview'][..., 6:7],
+        # 'bev_road': obs['birdview'][..., 0:1] + obs['birdview'][..., 1:2],
 
 
 #        'bev_elements': obs['birdview_initial_dict']
     }
+
+
     if 'toplidar' in obs.keys():
         obs_out['lidar_points'] = obs['toplidar']
     return obs_out
