@@ -39,6 +39,19 @@ ppo_config = dict(
                     rotation=[0, 0, 0],
                     fixed_pt_num=40000,
                 ),
+                dict(
+                    name='linelidar',
+                    type='lidar',
+                    channels=1,
+                    range=20.0,  # if need modify, should modify the env_wrapper.py together
+                    points_per_second=3600,
+                    rotation_frequency=10,
+                    upper_fov=0.0,
+                    lower_fov=0.0,
+                    position=[2.2, 0.0, 0.6],
+                    rotation=[0, 0, 0],
+                    fixed_pt_num=1000,
+                ),
             ),
         ),
         enable_detector=False,
@@ -128,7 +141,7 @@ ppo_config = dict(
             learner=dict(
                 hook=dict(
                     log_show_after_iter=1000,
-                    load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-test_ppo_new-2022-04-08-07-55-34/ckpt/ckpt_interrupt.pth.tar',
+                    # load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-test_ppo_new-2022-04-08-07-55-34/ckpt/ckpt_interrupt.pth.tar',
                     save_ckpt_after_iter=3000,
                 ),
             ),

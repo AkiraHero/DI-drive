@@ -173,7 +173,7 @@ def main(args, seed=0):
 
     # if detection not enabled, forbid lidar collection
     if not cfg.env.enable_detector:
-        cfg.env.simulator.obs = [i for i in cfg.env.simulator.obs if i['type'] != 'lidar']
+        cfg.env.simulator.obs = [i for i in cfg.env.simulator.obs if i['name'] != 'toplidar']
     collector = None
     if not only_eval:
         collector_env = CarlaSyncSubprocessEnvManager(
