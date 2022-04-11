@@ -79,8 +79,8 @@ ppo_config = dict(
         ran_light_is_failure=False,
         off_road_is_failure=False,
         wrong_direction_is_failure=False,
-        off_route_is_failure=True,
-        off_route_distance=10,
+        off_route_is_failure=False,
+        off_route_distance=15,
         # reward_func="customized_compute_reward",
         reward_func="racing_reward",
         #reward_type=['goal', 'distance', 'speed', 'angle', 'failure', 'lane'],
@@ -145,7 +145,7 @@ ppo_config = dict(
             learner=dict(
                 hook=dict(
                     log_show_after_iter=1000,
-                    load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-train_midleft_dynamic_nodet_rndspwn-2022-03-04-14-15-43/ckpt/iteration_33000.pth.tar',
+                    load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-test_laser_beam_cutfailure-2022-04-11-05-39-53/ckpt/iteration_222000.pth.tar',
                     save_ckpt_after_iter=3000,
                 ),
             ),
@@ -167,7 +167,7 @@ ppo_config = dict(
                 n_episode=50,
                 stop_rate=1.0,
                 transform_obs=True,
-                eval_once=False
+                eval_once=True
             ),
         ),
     ),

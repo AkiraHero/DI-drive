@@ -39,6 +39,19 @@ sac_config = dict(
                     rotation=[0, 0, 0],
                     fixed_pt_num=40000,
                 ),
+                dict(
+                    name='linelidar',
+                    type='lidar',
+                    channels=1,
+                    range=20.0,  # if need modify, should modify the env_wrapper.py together
+                    points_per_second=3600,
+                    rotation_frequency=10,
+                    upper_fov=0.0,
+                    lower_fov=0.0,
+                    position=[2.2, 0.0, 0.6],
+                    rotation=[0, 0, 0],
+                    fixed_pt_num=1000,
+                ),
             )
         ),
         enable_detector=False,
@@ -82,8 +95,8 @@ sac_config = dict(
         stuck_is_failure=True,
         ignore_light=True,
         ran_light_is_failure=False,
-        off_road_is_failure=False,
-        wrong_direction_is_failure=False,
+        off_road_is_failure=True,
+        wrong_direction_is_failure=True,
         off_route_is_failure=True,
         off_route_distance=15,
         reward_func="racing_reward",
@@ -139,9 +152,9 @@ sac_config = dict(
             weight_decay=0.0001,
             learner=dict(
                 hook=dict(
-                    log_show_after_iter=1000,
+                    log_show_after_iter=125,
                     save_ckpt_after_iter=3000,
-                    load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/sac-train_sac-2022-04-08-07-27-13/ckpt/ckpt_interrupt.pth.tar',
+                    # load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/sac-train_sac-2022-04-08-07-27-13/ckpt/ckpt_interrupt.pth.tar',
                 ),
             ),
         ),
@@ -151,7 +164,7 @@ sac_config = dict(
             n_sample=3000,
             noise_sigma=0.1,
             collector=dict(
-                collect_print_freq=500,
+                collect_print_freq=64,
                 deepcopy_obs=True,
                 transform_obs=True,
             ),

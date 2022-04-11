@@ -67,7 +67,7 @@ class BEVVehicleStateEncoder(nn.Module):
         collide_obj = data['collide_obj']
         way_curvature = data['way_curvature']
         laser_beam = data['laser_obs']
-        if 1 == len(velocity_local.shape):  # fill batch_size dim
+        if 2 == len(velocity_local.shape):  # fill batch_size dim
             velocity_local = velocity_local.unsqueeze(0)
             acceleration_local = acceleration_local.unsqueeze(0)
             heading_diff = heading_diff.unsqueeze(0)
