@@ -195,8 +195,9 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         unnecessary_keys = ['camera_vis']
         for env_id, timestep in timesteps.items():
             for k in unnecessary_keys:
-                if k in timestep.obs.keys():
-                    timestep.obs.pop(k)
+                if timestep.obs:
+                    if k in timestep.obs.keys():
+                        timestep.obs.pop(k)
 
         for env_id, timestep in timesteps.items():
             if is_abnormal_timestep(timestep):
@@ -521,8 +522,9 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             if self._visualize_cfg.type == 'birdview':
                 visualizer.paint(render_buffer, render_info)
             elif self._visualize_cfg.type == 'camera':
-                assert 'camera_vis' in timestep.obs.keys()
-                visualizer.set_canvas(timestep.obs['camera_vis'])
+                if timestep.obs:
+                    assert 'camera_vis' in timestep.obs.keys()
+                    visualizer.set_canvas(timestep.obs['camera_vis'])
             visualizer.run_visualize()
 
             if timestep.done:

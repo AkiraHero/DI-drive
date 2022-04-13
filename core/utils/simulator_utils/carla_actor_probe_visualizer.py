@@ -293,7 +293,7 @@ class CameraManager(object):
                 print("There is no new image come in........")
 
             display.fill(0)
-            display += self.image
+            display += cv2.resize(self.image, (display.shape[1], display.shape[0]))
             self.rendered = True
 
     @staticmethod
@@ -331,7 +331,7 @@ class CameraManager(object):
 class CarlaActorProbeVisualizer(object):
     def __init__(self, actor):
 
-        self._width, self._height = 1280, 720
+        self._width, self._height = 640, 360
         self._img = np.zeros((self._height, self._width, 3), dtype=np.uint8)
         self._actor = actor
         # self._hud = HUD(1280, 720)
