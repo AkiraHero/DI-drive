@@ -97,8 +97,8 @@ def get_obs_out(obs):
 
     laser_obs = process_line_lidar(obs['linelidar'])
     obs_out = {
-        # 'birdview': obs['birdview'][..., [0, 1, 5, 6, 8, 7]],
-        # 'speed': (obs['speed'] / 25).astype(np.float32),
+        'birdview': obs['birdview'][..., [0, 1, 5, 6, 8, 7]],
+        'speed': (obs['speed'] / 25).astype(np.float32),
 
         'velocity_local': np.array(obs['velocity_local'] / 20.0).reshape(-1, 1),
         'acceleration_local': np.array(obs['acceleration_local'] / 20.0).reshape(-1, 1),

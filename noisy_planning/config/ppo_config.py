@@ -118,8 +118,8 @@ ppo_config = dict(
             )
         ),
         wrapper=dict(
-            collect=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
-            eval=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
+            collect=dict(suite='race', suite_n_vehicles=60, suite_n_pedestrians=0, ),
+            eval=dict(suite='race', suite_n_vehicles=60, suite_n_pedestrians=0, ),
         ),
     ),
     server=[
@@ -145,7 +145,7 @@ ppo_config = dict(
             learner=dict(
                 hook=dict(
                     log_show_after_iter=1000,
-                    load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-test_laser_beam_cutfailure-2022-04-11-05-39-53/ckpt/iteration_222000.pth.tar',
+                    load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-add_car-2022-04-11-18-49-02/ckpt/iteration_258000.pth.tar',
                     save_ckpt_after_iter=3000,
                 ),
             ),

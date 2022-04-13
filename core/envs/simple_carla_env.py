@@ -710,15 +710,15 @@ class SimpleCarlaEnv(BaseDriveEnv):
         collision_dynamic_reward = 0
         speed = self._simulator_databuffer['state']['speed'] / 3.6
         if self._collided:
-            self.logger.error("11!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             if 'vehicle' in self._collided_info[1]:
                 collision_dynamic_reward = -speed ** 2
+                self.logger.error('!!![Collide car]'+"reward={}".format(collision_dynamic_reward)+ ",speed={}".format(speed))
             elif 'walker' in self._collided_info[1]:
                 collision_dynamic_reward = -speed ** 2
+                self.logger.error('!!![Collide man]'+"reward={}".format(collision_dynamic_reward)+ ",speed={}".format(speed))
             else:
                 collision_static_reward = -speed ** 2
-                self.logger.error("2!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                self.logger.error('[Collide]'+"reward={}".format(collision_static_reward)+ ",speed={}".format(speed))
+                self.logger.error('!!![Collide wall]'+"reward={}".format(collision_static_reward)+ ",speed={}".format(speed))
         # print("corresponding speed:", speed)
         # print("corresponding speed rw assume collission:", -speed ** 2)
 
@@ -820,13 +820,14 @@ class SimpleCarlaEnv(BaseDriveEnv):
 
         total_reward = 0
         # stage 1
-        lambda_wall = 0.005
-        lambda_car = 0.005
-        total_reward = moving_reward + lambda_wall * collision_static_reward
+        lambda_wall = 0.01
+        lambda_car = 0.01
+        total_reward = moving_reward + lambda_wall * collision_static_reward + lambda_car * collision_dynamic_reward
         enabled_rw_info = {
             'moving_reward': moving_reward,
             'collision_static_reward': collision_static_reward,
-            'lambda_wall': lambda_wall
+            'lambda_wall': lambda_wall,
+            'collision_dynamic_reward': collision_dynamic_reward,
         }
 
 
