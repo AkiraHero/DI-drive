@@ -145,7 +145,7 @@ ppo_config = dict(
             learner=dict(
                 hook=dict(
                     log_show_after_iter=1000,
-                    load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-add_car-2022-04-11-18-49-02/ckpt/iteration_258000.pth.tar',
+                    # load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-test_ppo_new-2022-04-08-07-55-34/ckpt/ckpt_interrupt.pth.tar',
                     save_ckpt_after_iter=3000,
                 ),
             ),
@@ -167,7 +167,7 @@ ppo_config = dict(
                 n_episode=50,
                 stop_rate=1.0,
                 transform_obs=True,
-                eval_once=True
+                eval_once=False
             ),
         ),
     ),
