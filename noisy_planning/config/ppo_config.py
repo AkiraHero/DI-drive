@@ -112,7 +112,7 @@ ppo_config = dict(
                 step_timeout=120,
                 reset_timeout=120,
                 visualize=dict(
-                            type='birdview',
+                            type='camera',
                             outputs=['video'],
                         ),
             )

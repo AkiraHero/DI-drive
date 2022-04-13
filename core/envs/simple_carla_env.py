@@ -13,7 +13,7 @@ from core.utils.others.visualizer import Visualizer
 from core.utils.simulator_utils.carla_utils import visualize_birdview
 from core.utils.env_utils.stuck_detector import StuckDetector
 from core.utils.simulator_utils.carla_utils import lane_mid_distance, get_lane_dis
-
+from core.utils.simulator_utils.carla_actor_probe_visualizer import CarlaActorProbeVisualizer
 import traceback
 
 
@@ -65,6 +65,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         # whether open visualize
         visualize=None,
         reward_func="ini_compute_reward",
+        add_camera_vis_to_obs=True,
     )
 
     def __init__(
@@ -131,10 +132,13 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._timeout = float('inf')
         self._launched_simulator = False
 
+        self._add_camera_vis_to_obs = self._cfg.add_camera_vis_to_obs
         self._visualize_cfg = self._cfg.visualize
         self._simulator_databuffer = dict()
         self._visualizer = None
+        self._render_buffer = None
         self._last_canvas = None
+        self._probe_camera_visualizer = None
         self.logger.warning("Using reward function: {}, suc_reward={}, fail_reward={}".format(self._cfg.reward_func, self._success_reward, self._failure_reward))
         self._reward_func = self.__getattribute__(self._cfg.reward_func)
         self._suite_name = None
@@ -183,6 +187,12 @@ class SimpleCarlaEnv(BaseDriveEnv):
             self._init_carla_simulator()
 
         self._simulator.init(**kwargs)
+
+        if self._cfg.add_camera_vis_to_obs:
+            if self._probe_camera_visualizer is not None:
+                self._probe_camera_visualizer.reset(self.hero_player)
+            else:
+                self._probe_camera_visualizer = CarlaActorProbeVisualizer(self.hero_player)
 
         if self._visualize_cfg is not None:
             if self._visualizer is not None:
@@ -260,7 +270,6 @@ class SimpleCarlaEnv(BaseDriveEnv):
         # self.logger.error("start to perform step... after simu runstep, tick=".format(self._tick))
 
         obs = self.get_observations()
-
         self._collided = self._simulator.collided
         self._collided_info = self._simulator.collided_info
         self._stuck = self._stuck_detector.stuck
@@ -472,6 +481,9 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 'direction_list': navigation['direction_list'],
             }
         )
+
+        if self._add_camera_vis_to_obs:
+            obs['camera_vis'] = self._probe_camera_visualizer.get_visualize_img(birdview=obs['birdview'])
 
         if self._visualizer is not None:
             if self._visualize_cfg.type not in sensor_data:
@@ -994,8 +1006,10 @@ class SimpleCarlaEnv(BaseDriveEnv):
         render_info.update(self._simulator_databuffer['navigation'])
         render_info.update(self._simulator_databuffer['information'])
         render_info.update(self._simulator_databuffer['action'])
-
-        self._visualizer.paint(self._render_buffer, render_info)
+        if self._visualize_cfg.type == 'birdview':
+            self._visualizer.paint(self._render_buffer, render_info)
+        elif self._visualize_cfg.type == 'camera':
+            self._visualizer.set_canvas(self._render_buffer)
         self._visualizer.run_visualize()
         self._last_canvas = self._visualizer.canvas
         return self._visualizer.canvas

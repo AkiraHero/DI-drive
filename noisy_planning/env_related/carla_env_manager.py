@@ -191,6 +191,13 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         # visualize
         self.render(timesteps)
 
+        # delete unnecessary data
+        unnecessary_keys = ['camera_vis']
+        for env_id, timestep in timesteps.items():
+            for k in unnecessary_keys:
+                if k in timestep.obs.keys():
+                    timestep.obs.pop(k)
+
         for env_id, timestep in timesteps.items():
             if is_abnormal_timestep(timestep):
                 self._env_states[env_id] = EnvState.ERROR
@@ -440,7 +447,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         7 hero
         8 route
         """
-        def render_image(bird_view_data_dict):
+        def render_birdview_image(bird_view_data_dict):
             BACKGROUND = [0, 0, 0]
             bev_render_colors = {
                 'road': (85, 87, 83),
@@ -467,48 +474,55 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             visualizer = self._visualizers[env_id]
             if visualizer is None:
                 continue
-
-            chn_dict = {
-                'road': timestep.obs['birdview'][..., 0],
-                'lane': timestep.obs['birdview'][..., 1],
-                'vehicle': timestep.obs['birdview'][..., 2],
-                'pedestrian': timestep.obs['birdview'][..., 3],
-                'route': timestep.obs['birdview'][..., 4],
-                'hero': timestep.obs['birdview'][..., 5],
-            }
-
-            render_buffer = render_image(chn_dict)
-            render_buffer_gt = None
-            if 'detected' in timestep.obs.keys() and timestep.obs['detected']:
-                chn_dict_gt = {
+            if self._visualize_cfg.type == 'birdview':
+                chn_dict = {
                     'road': timestep.obs['birdview'][..., 0],
                     'lane': timestep.obs['birdview'][..., 1],
-                    'vehicle': timestep.obs['gt_vehicle'],
-                    'pedestrian': timestep.obs['gt_pedestrian'],
+                    'vehicle': timestep.obs['birdview'][..., 2],
+                    'pedestrian': timestep.obs['birdview'][..., 3],
                     'route': timestep.obs['birdview'][..., 4],
                     'hero': timestep.obs['birdview'][..., 5],
                 }
-                render_buffer_gt = render_image(chn_dict_gt)
-            render_info = {
-                'collided': timestep.info['collided'],
-                'off_road': timestep.info['off_road'],
-                'wrong_direction': timestep.info['wrong_direction'],
-                'off_route': timestep.info['off_route'],
-                'reward': timestep.reward,
-                'tick': timestep.info['tick'],
-                'end_timeout': timestep.info['end_timeout'],
-                'end_distance': timestep.info['end_distance'],
-                'total_distance': timestep.info['total_distance'],
-            }
-            render_info.update(timestep.info['state'])
-            render_info.update(timestep.info['navigation'])
-            render_info.update(timestep.info['information'])
-            render_info.update(timestep.info['action'])
-            if render_buffer_gt is not None:
-                render_buffer = np.concatenate([render_buffer, render_buffer_gt], axis=1)
-            # else:
-            #     render_buffer = np.concatenate([render_buffer, render_buffer], axis=1)
-            visualizer.paint(render_buffer, render_info)
+
+                render_buffer = render_birdview_image(chn_dict)
+                render_buffer_gt = None
+                if 'detected' in timestep.obs.keys() and timestep.obs['detected']:
+                    chn_dict_gt = {
+                        'road': timestep.obs['birdview'][..., 0],
+                        'lane': timestep.obs['birdview'][..., 1],
+                        'vehicle': timestep.obs['gt_vehicle'],
+                        'pedestrian': timestep.obs['gt_pedestrian'],
+                        'route': timestep.obs['birdview'][..., 4],
+                        'hero': timestep.obs['birdview'][..., 5],
+                    }
+                    render_buffer_gt = render_birdview_image(chn_dict_gt)
+                render_info = {
+                    'collided': timestep.info['collided'],
+                    'off_road': timestep.info['off_road'],
+                    'wrong_direction': timestep.info['wrong_direction'],
+                    'off_route': timestep.info['off_route'],
+                    'reward': timestep.reward,
+                    'tick': timestep.info['tick'],
+                    'end_timeout': timestep.info['end_timeout'],
+                    'end_distance': timestep.info['end_distance'],
+                    'total_distance': timestep.info['total_distance'],
+                }
+                render_info.update(timestep.info['state'])
+                render_info.update(timestep.info['navigation'])
+                render_info.update(timestep.info['information'])
+                render_info.update(timestep.info['action'])
+                if render_buffer_gt is not None:
+                    render_buffer = np.concatenate([render_buffer, render_buffer_gt], axis=1)
+                # else:
+                #     render_buffer = np.concatenate([render_buffer, render_buffer], axis=1)
+
+
+
+            if self._visualize_cfg.type == 'birdview':
+                visualizer.paint(render_buffer, render_info)
+            elif self._visualize_cfg.type == 'camera':
+                assert 'camera_vis' in timestep.obs.keys()
+                visualizer.set_canvas(timestep.obs['camera_vis'])
             visualizer.run_visualize()
 
             if timestep.done:
