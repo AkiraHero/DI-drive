@@ -1,5 +1,4 @@
 import copy
-import cv2
 import numpy as np
 import carla
 import re
@@ -281,12 +280,9 @@ class HUD(object):
     def render(self, display):
         """Render for HUD class"""
         if self._show_info:
-            w, h = display.shape[1], display.shape[0]
-            img_pil = Image.fromarray(display, )
-            draw = ImageDraw.Draw(img_pil, "RGBA")
-            draw.rectangle(((0, 0), (220, h)), fill=(255, 255, 255, 60))
-            np.copyto(display, np.array(img_pil))
-
+            w, h = display.size
+            draw = ImageDraw.Draw(display, "RGBA")
+            draw.rectangle(((0, 0), (220, h)), fill=(0, 0, 0, 128))
             v_offset = 4
             bar_h_offset = 100
             bar_width = 106
@@ -299,44 +295,34 @@ class HUD(object):
                         for i in range(len(points) - 1):
                             pt1 = points[i]
                             pt2 = points[i + 1]
-                            cv2.line(display, pt1, pt2, (255, 136, 0))
+                            draw.line((pt1, pt2), fill=(255, 136, 0, 255))
                     item = None
                     v_offset += 18
                 elif isinstance(item, tuple):
                     if isinstance(item[1], bool):
                         rect_w, rect_h = 6, 6
                         left, top = bar_h_offset, v_offset + 8
-                        color = (255, 255, 255)
-                        cv2.rectangle(display, (left, top), (left + rect_w, top + rect_h), color)
-                        # pygame.draw.rect(display, (255, 255, 255), rect, 0 if item[1] else 1)
+                        color = (255, 255, 255, 255)
+                        draw.rectangle(((left, top), (left + rect_w, top + rect_h)), fill=color)
                     else:
                         rect_w, rect_h = bar_width, 6
                         left, top = bar_h_offset, v_offset + 8
-                        color = (255, 255, 255)
-                        cv2.rectangle(display, (left, top), (left + rect_w, top + rect_h), color)
-                        # pygame.draw.rect(display, (255, 255, 255), rect_border, 1)
-
+                        color = (255, 255, 255, 255)
+                        draw.rectangle(((left, top), (left + rect_w, top + rect_h)), outline=color)
                         fig = (item[1] - item[2]) / (item[3] - item[2])
                         if item[2] < 0.0:
                             rect_w, rect_h = 6, 6
                             left, top = bar_h_offset + int(fig * (bar_width - 6)), v_offset + 8
-                            color = (255, 255, 255)
-                            cv2.rectangle(display, (left, top), (left + rect_w, top + rect_h), color)
                         else:
                             rect_w, rect_h = int(fig * bar_width), 6
                             left, top = bar_h_offset, v_offset + 8
-                            color = (255, 255, 255)
-                        cv2.rectangle(display, (left, top), (left + rect_w, top + rect_h), color)
-                        # pygame.draw.rect(display, (255, 255, 255), rect)
+                        draw.rectangle(((left, top), (left + rect_w, top + rect_h)), fill=color)
                     item = item[0]
                 if item:  # At this point has to be a str.
-                    img_pil = Image.fromarray(display)
-                    draw = ImageDraw.Draw(img_pil)
-                    draw.text((8, v_offset), item, font=self._font, fill=(255, 255, 255, 0))
-                    np.copyto(display, np.array(img_pil))
+                    draw.text((8, v_offset), item, font=self._font, fill=(255, 255, 255, 255))
                 v_offset += 18
             # cv2.imshow("display", display)
-            # cv2.waitKey(1)
+            # cv2.waitKey(-1)
         # self._notifications.render(display)
 
 
@@ -428,12 +414,13 @@ class CameraManager(object):
 
     def render(self, display):
         """Render method"""
+        assert isinstance(display, Image.Image)
         if self.image is not None:
             if self.rendered:
                 print("There is no new image come in........")
-
-            display.fill(0)
-            display += cv2.resize(self.image, (display.shape[1], display.shape[0]))
+            camera_image = Image.fromarray(self.image)
+            camera_image.resize(display.size)
+            display.paste(camera_image)
             self.rendered = True
 
     @staticmethod
@@ -477,7 +464,18 @@ class CarlaActorProbeVisualizer(object):
         self.lane_invasion_sensor = None
         self.gnss_sensor = None
         self._width, self._height = 1280, 720
-        self._img = np.zeros((self._height, self._width, 3), dtype=np.uint8)
+
+        # self._img = np.zeros((self._height, self._width, 3), dtype=np.uint8)
+        self._img = Image.new("RGB", (self._width, self._height))
+
+        # arrange sub figure
+        self._subfigure_width = 160
+        self._subfigure_rect =  {
+            'birdview': ((self._width - self._subfigure_width, 0), (self._width, self._subfigure_width)),
+            'linelidar': ((self._width - self._subfigure_width, self._subfigure_width), (self._width, self._subfigure_width * 2)),
+        }
+
+
         self._camera_gamma = 2.2
         self._cam_pos_id = 0
         self._cam_index = 0
@@ -491,20 +489,22 @@ class CarlaActorProbeVisualizer(object):
                 self._camera_manager.sensor = None
             self._camera_manager.index = None
 
-    def render(self, birdview=None):
+    def render(self, birdview=None, linelidar=None):
         self._camera_manager.render(self._img)
         self._hud.tick(collision_sensor=self.collision_sensor, gnss_sensor=self.gnss_sensor)
         self._hud.render(self._img)
 
         if birdview is not None:
             self.add_birdview(birdview)
+        if linelidar is not None:
+            self.add_line_lidar(linelidar)
 
-    def get_visualize_img(self, birdview=None):
-        self.render(birdview)
-        return self._img
+    def get_visualize_img(self, birdview=None, linelidar=None):
+        self.render(birdview=birdview, linelidar=linelidar)
+        return np.array(self._img)
 
     def reset(self, actor):
-        self._img.fill(0)
+        self._img = Image.new("RGB", (self._width, self._height))
         self._actor = actor
         self._hud = HUD(self._actor)
         self.destroy_sensors()
@@ -518,9 +518,39 @@ class CarlaActorProbeVisualizer(object):
 
     def add_birdview(self, birdview):
         birdview_img = self.get_birdview_obs_image(birdview)
-        h = birdview_img.shape[0]
-        w = birdview_img.shape[0]
-        self._img[:h, -w:, ...] = birdview_img
+        self._img.paste(Image.fromarray(birdview_img), self._subfigure_rect['birdview'][0])
+        # self._img[:h, -w:, ...] = birdview_img
+
+    def add_line_lidar(self, points):
+        points = points[:, :3]
+        pixel_size = 0.2
+        cx = 40
+        cy = 80
+        img_width = 160
+        img_height = 160
+        img = Image.new('RGB', (img_width, img_height))
+        draw = ImageDraw.Draw(img, "RGBA")
+        pt_num = points.shape[0]
+        valid_pt_num = 0
+        for i in range(pt_num):
+            x = points[i, 0]
+            y = points[i, 1]
+            # to adapt to carla ordinate: exchange x and y
+            py = int(x / pixel_size + cx)
+            px = int(y / pixel_size + cy)
+            range_ = (x ** 2 + y ** 2) ** 0.5
+            theta = np.arctan2(y, x)
+            if abs(theta) > np.pi / 2.0 or abs(y) < 0.0001:
+                continue
+            if py < 0 or py >= img_height or px < 0 or px >= img_width:
+                continue
+            valid_pt_num += 1
+            draw.point((px, py), fill=(255, 0, 255, 255))
+        py = int(cx)
+        px = int(cy)
+        draw.ellipse(((px - 3, py - 3), (px + 3, py + 3)), fill=(255, 0, 0, 255))
+        img = img.transpose(Image.FLIP_TOP_BOTTOM)
+        self._img.paste(img, self._subfigure_rect['linelidar'][0])
 
     def get_birdview_obs_image(self, birdview):
         """

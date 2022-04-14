@@ -483,7 +483,8 @@ class SimpleCarlaEnv(BaseDriveEnv):
         )
 
         if self._add_camera_vis_to_obs:
-            obs['camera_vis'] = self._probe_camera_visualizer.get_visualize_img(birdview=obs['birdview'])
+            obs['camera_vis'] = self._probe_camera_visualizer.get_visualize_img(birdview=obs['birdview'],
+                                                                                linelidar=obs['linelidar'])
 
         if self._visualizer is not None:
             if self._visualize_cfg.type not in sensor_data:
