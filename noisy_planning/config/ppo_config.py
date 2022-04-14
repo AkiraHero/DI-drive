@@ -10,6 +10,7 @@ ppo_config = dict(
         simulator=dict(
             town='Town01',
             spawn_manner="random",  # random, near
+            spawn_pos_fix="",
             delta_seconds=0.1,
             disable_two_wheels=True,
             verbose=False,

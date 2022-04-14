@@ -230,6 +230,11 @@ class MapImage(object):
             (location.y - self._world_offset[1])
         return [int(x - offset[0]), int(y - offset[1])]
 
+    def pixel_to_world(self, x, y):
+        world_x = x / (self.scale * self._pixels_per_meter) + self._world_offset[0]
+        world_y = y / (self.scale * self._pixels_per_meter) + self._world_offset[1]
+        return [world_x, world_y]
+
     def world_to_pixel_width(self, width):
         return int(self.scale * self._pixels_per_meter * width)
 

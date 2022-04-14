@@ -1,3 +1,4 @@
+import pickle
 import sys
 import cv2
 import numpy as np
@@ -158,7 +159,13 @@ class MapImage(object):
             pt2 = self.world_to_pixel(w2[0].transform.location)
             cv2.line(self.map_surface, pt1, pt2, (0, 0, 255), 5)
 
-
+def save_spw_pt(pts, filename):
+    infos = []
+    for i in pts:
+        info = [i.location.x, i.location.y, i.location.z, i.rotation.roll, i.rotation.pitch,i.rotation.yaw]
+        infos.append(info)
+    with open(filename, 'wb') as f:
+        pickle.dump(infos, f)
 
 if __name__ == '__main__':
     client = carla.Client("localhost", 9000)
@@ -166,9 +173,13 @@ if __name__ == '__main__':
     world = client.load_world(town)
     map = world.get_map()
     map_image = MapImage(world, map, load_map_img="/home/akira/Project/Model_behaviour/DI-drive/noisy_planning/utils/map_town5.png")
+    print("_world_offset", map_image._world_offset)
+    print("self.scale", map_image.scale)
+    print("self._pixels_per_meter", map_image._pixels_per_meter)
 
 
     spawn_points = map.get_spawn_points()
+    save_spw_pt(spawn_points, "spw_pt_town5.pt")
     # st_spw_pt_inx = 266
     # ed_spw_pt_inx = 256
     # st_point = spawn_points[st_spw_pt_inx]
