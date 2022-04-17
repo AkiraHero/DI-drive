@@ -822,7 +822,15 @@ class SimpleCarlaEnv(BaseDriveEnv):
         # stage 1
         lambda_wall = 0.01
         lambda_car = 0.01
-        total_reward = moving_reward + lambda_wall * collision_static_reward + lambda_car * collision_dynamic_reward
+
+        final_reward = 0
+        if self.is_success():
+            final_reward += self._success_reward
+
+        if self.is_failure() and self._collided:
+            final_reward += self._failure_reward
+
+        total_reward = moving_reward + lambda_wall * collision_static_reward + lambda_car * collision_dynamic_reward + final_reward
         enabled_rw_info = {
             'moving_reward': moving_reward,
             'collision_static_reward': collision_static_reward,
