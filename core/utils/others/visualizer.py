@@ -75,6 +75,9 @@ class Visualizer(object):
             self._video_maker = VideoMaker()
             self._video_maker.init(self._save_dir, self._name)
 
+    def set_canvas(self, image):
+        self._canvas = np.uint8(image.copy())
+
     def paint(self, image: Any, data_dict: Optional[Dict] = None) -> None:
         """
         Paint canvas with observation images and data.

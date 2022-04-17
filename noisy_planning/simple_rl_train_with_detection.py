@@ -1,11 +1,10 @@
 # system
-<<<<<<< HEAD
-# import sys
-# sys.path.append("/home/akira/carla-0.9.11-py3.7-linux-x86_64.egg")
-=======
-import sys
-sys.path.append("/home/akira/carla-0.9.11-py3.7-linux-x86_64.egg")
->>>>>>> b100b1b9679ad2258f8bb96a1c2aaee4e0446395
+try:
+    import carla
+except:
+    import sys
+    sys.path.append("/home/akira/carla-0.9.11-py3.7-linux-x86_64.egg")
+
 import logging
 import argparse
 from functools import partial

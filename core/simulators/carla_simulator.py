@@ -113,6 +113,7 @@ class CarlaSimulator(BaseSimulator):
         verbose=True,
         debug=False,
         spawn_manner="random",  # random, near
+        spawn_pos_fix=None
     )
 
     def __init__(
@@ -176,6 +177,12 @@ class CarlaSimulator(BaseSimulator):
         self._camera_aug_cfg = self._cfg.aug
         self._verbose = self._cfg.verbose
         self._spawn_manner = self._cfg.spawn_manner
+        self._spawn_pos_path = self._cfg.spawn_pos_fix
+        self._spawn_pos_list = None
+        if self._spawn_pos_path:
+            self._spw_dynamic, self._spawn_pos_list = self._load_spw_pos()
+
+
         self._support_spawn_manner = ['random', 'near']
         assert self._spawn_manner in self._support_spawn_manner
 
@@ -255,8 +262,10 @@ class CarlaSimulator(BaseSimulator):
 
             self._spawn_hero_vehicle(start_pos=start)
             self._prepare_observations()
-            
-            self._spawn_vehicles()
+            if self._spawn_pos_list is not None:
+                self._spawn_vehicles_fixed(self._spawn_pos_list, dynamic=self._spw_dynamic)
+            else:
+                self._spawn_vehicles()
             self._spawn_pedestrians()
 
             CarlaDataProvider.on_carla_tick()
@@ -323,6 +332,57 @@ class CarlaSimulator(BaseSimulator):
         points.sort(key=sort_func)
         pass
         # todo: if crowded, add random swap
+
+    def _load_spw_pos(self):
+        pos_list = []
+        with open(self._spawn_pos_path, 'r') as f:
+            dynamic = f.readline().strip('\n')
+            lines = f.readlines()
+            for i in lines:
+                pose = [float(num) for num in i.strip('\n').split(' ')]
+                pos_list.append(pose)
+            if dynamic == "dynamic":
+                dynamic = True
+            elif dynamic == 'static':
+                dynamic = False
+            else:
+                raise NotImplementedError
+            return dynamic, pos_list
+
+
+    def _spawn_vehicles_fixed(self, poses, dynamic=False) -> None:
+        blueprints = self._blueprints.filter('vehicle.*')
+        if self._disable_two_wheels:
+            blueprints = [x for x in blueprints if int(x.get_attribute('number_of_wheels')) == 4]
+
+        SpawnActor = carla.command.SpawnActor
+        SetAutopilot = carla.command.SetAutopilot
+        FutureActor = carla.command.FutureActor
+
+        batch = []
+        for n, transform in enumerate(poses):
+            blueprint = random.choice(blueprints)
+            if blueprint.has_attribute('color'):
+                color = random.choice(blueprint.get_attribute('color').recommended_values)
+                blueprint.set_attribute('color', color)
+            if blueprint.has_attribute('driver_id'):
+                driver_id = random.choice(blueprint.get_attribute('driver_id').recommended_values)
+                blueprint.set_attribute('driver_id', driver_id)
+
+            # spawn the cars and set their autopilot and light state all together
+            if dynamic:
+                blueprint.set_attribute('role_name', 'autopilot')
+                batch.append(SpawnActor(blueprint, transform).then(SetAutopilot(FutureActor, True, self._tm.get_port())))
+            else:
+                blueprint.set_attribute('role_name', 'static')
+                batch.append(SpawnActor(blueprint, transform))
+
+        for response in self._client.apply_batch_sync(batch, True):
+            if response.error:
+                if self._verbose:
+                    self.logger.error('[SIMULATOR]' + str(response.error))
+            else:
+                CarlaDataProvider.register_actor(self._world.get_actor(response.actor_id))
 
 
     def _spawn_vehicles(self) -> None:
