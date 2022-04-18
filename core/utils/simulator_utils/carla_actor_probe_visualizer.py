@@ -10,6 +10,7 @@ import datetime
 import os
 import collections
 from carla import ColorConverter as cc
+from collections import OrderedDict
 
 from PIL import ImageFont, ImageDraw, Image
 # todo: sustitute all opencv by pil
@@ -28,34 +29,46 @@ def get_actor_display_name(actor, truncate=250):
     return (name[:truncate - 1] + u'\u2026') if len(name) > truncate else name
 
 
-# class FadingText(object):
-#     """ Class for fading text """
-#
-#     def __init__(self, font, dim, pos):
-#         """Constructor method"""
-#         self.font = font
-#         self.dim = dim
-#         self.pos = pos
-#         self.seconds_left = 0
-#         self.surface = np.zeros(dim)
-#
-#     def set_text(self, text, color=(255, 255, 255), seconds=2.0):
-#         """Set fading text"""
-#         text_texture = self.font.render(text, True, color)
-#         self.surface = np.zeros(self.dim)
-#         self.seconds_left = seconds
-#         self.surface.fill((0, 0, 0, 0))
-#         self.surface.blit(text_texture, (10, 11))
-#
-#     def tick(self, _, clock):
-#         """Fading text method for every tick"""
-#         delta_seconds = 1e-3 * clock.get_time()
-#         self.seconds_left = max(0.0, self.seconds_left - delta_seconds)
-#         self.surface.set_alpha(500.0 * self.seconds_left)
-#
-#     def render(self, display):
-#         """Render fading text method"""
-#         display.blit(self.surface, self.pos)
+class FadingText(object):
+    """ Class for fading text """
+
+    def __init__(self, font, pos):
+        """Constructor method"""
+        self.font = font
+        self.pos = pos
+        self.seconds_left = 0
+        self.maintain_time = 0
+        self.alpha = 0
+        self.tick_cnt = 0
+        self.tick_time = 0.1
+        self.text = None
+        self.text_color = None
+
+    def set_text(self, text, color=(255, 255, 255), seconds=2.0):
+        """Set fading text"""
+        self.maintain_time = seconds
+        self.seconds_left = seconds
+        self.tick_cnt = 0
+        self.text = text
+        self.text_color = color
+
+    def tick(self):
+        """Fading text method for every tick"""
+        if self.text:
+            self.tick_cnt += 1
+            delta_seconds = self.tick_time * self.tick_cnt
+            self.seconds_left = max(0.0, self.seconds_left - delta_seconds)
+            self.alpha = 255 - self.seconds_left / self.maintain_time * 255
+        if self.seconds_left == 0:
+            self.text = None
+            self.tick_cnt = 0
+
+    def render(self, display):
+        """Render fading text method"""
+        if self.text:
+            draw = ImageDraw.Draw(display, "RGBA")
+            draw.text(self.pos, self.text, font=self.font, fill=(*self.text_color, int(self.alpha)))
+
 
 class CollisionSensor(object):
     """ Class for collision sensors"""
@@ -168,19 +181,9 @@ class GnssSensor(object):
 class HUD(object):
     """Class for HUD text"""
 
-    def __init__(self, parent_actor):
-        """Constructor method"""
-        # self.dim = (width, height)
-        # font = pygame.font.Font(pygame.font.get_default_font(), 20)
-        # font_name = 'courier' if os.name == 'nt' else 'mono'
-        # fonts = [x for x in pygame.font.get_fonts() if font_name in x]
-        # default_font = 'ubuntumono'
-        # mono = default_font if default_font in fonts else fonts[0]
-        # mono = pygame.font.match_font(mono)
-        # self._font_mono = pygame.font.Font(mono, 12 if os.name == 'nt' else 14)
-        # self._notifications = FadingText(font, (width, 40), (0, height - 40))
-        # self.help = HelpText(pygame.font.Font(mono, 24), width, height)
+    def __init__(self, parent_actor, shape_):
         self._actor = parent_actor
+        self._width, self._height = shape_[0], shape_[1]
         self._world = self._actor.get_world()
         self._map = self._world.get_map()
         self._world.on_tick(self.on_world_tick)
@@ -188,10 +191,17 @@ class HUD(object):
         self.frame = 0
         self.simulation_time = 0
         self._show_info = True
-        self._info_text = []
+
+        self._info_text = None
+        self._control_text = None
+
+
         self._font_file = os.path.join(os.path.dirname(__file__), "font/ubuntu-mono/UbuntuMono-Regular.ttf")
         self._font_size = 12
         self._font = ImageFont.truetype(self._font_file, self._font_size)
+        self._notification_font_size = 60
+        self._notification_font = ImageFont.truetype(self._font_file, self._notification_font_size)
+        self._notifications = FadingText(self._notification_font, (0, self._height - 100))
         # self._server_clock = pygame.time.Clock()
 
     def on_world_tick(self, timestamp):
@@ -203,7 +213,7 @@ class HUD(object):
 
     def tick(self, gnss_sensor=None, collision_sensor=None):
         """HUD method for every tick"""
-        # self._notifications.tick(world, clock)
+        self._notifications.tick()
         if not self._show_info:
             return
         transform = self._actor.get_transform()
@@ -223,54 +233,28 @@ class HUD(object):
 
         vehicles = self._world.get_actors().filter('vehicle.*')
         map_name = self._map.name if self._map else "Unavailable"
-        GNSS_info = 'GNSS:% 24s' % ('(% 2.6f, % 3.6f)' % (gnss_sensor.lat, gnss_sensor.lon)) if gnss_sensor else "GNSS: Unavailable"
 
-        self._info_text = [
-            'Server:  % 16.0f FPS' % self.server_fps,
-            '',
-            'Vehicle: % 20s' % get_actor_display_name(self._actor, truncate=20),
-            'Map:     % 20s' % map_name,
-            'Simulation time: % 12s' % datetime.timedelta(seconds=int(self.simulation_time)),
-            '',
-            'Speed:   % 15.0f km/h' % (3.6 * math.sqrt(vel.x**2 + vel.y**2 + vel.z**2)),
-            u'Heading:% 16.0f\N{DEGREE SIGN} % 2s' % (transform.rotation.yaw, heading),
-            'Location:% 20s' % ('(% 5.1f, % 5.1f)' % (transform.location.x, transform.location.y)),
-            GNSS_info,
-            'Height:  % 18.0f m' % transform.location.z,
-            '']
-        if isinstance(control, carla.VehicleControl):
-            self._info_text += [
-                ('Throttle:', control.throttle, 0.0, 1.0),
-                ('Steer:', control.steer, -1.0, 1.0),
-                ('Brake:', control.brake, 0.0, 1.0),
-                ('Reverse:', control.reverse),
-                ('Hand brake:', control.hand_brake),
-                ('Manual:', control.manual_gear_shift),
-                'Gear:        %s' % {-1: 'R', 0: 'N'}.get(control.gear, control.gear)]
-        elif isinstance(control, carla.WalkerControl):
-            self._info_text += [
-                ('Speed:', control.speed, 0.0, 5.556),
-                ('Jump:', control.jump)]
-        self._info_text += [
-            '',
-            'Collision:',
-            collision,
-            '',
-            'Number of vehicles: % 8d' % len(vehicles)]
+        self._info_text = OrderedDict()
+        self._control_text = OrderedDict()
+        # general info
+        self._info_text['Vehicle'] = 'Vehicle: % 20s' % get_actor_display_name(self._actor, truncate=20)
+        self._info_text['Map'] = 'Map:     % 20s' % map_name
+        self._info_text['Simulation time'] = 'Simulation time: % 12s' % datetime.timedelta(seconds=int(self.simulation_time))
+        self._info_text['Speed'] = 'Speed:   % 15.0f km/h' % (3.6 * math.sqrt(vel.x**2 + vel.y**2 + vel.z**2))
+        self._info_text['heading'] = u'Heading:% 16.0f\N{DEGREE SIGN} % 2s' % (transform.rotation.yaw, heading)
+        self._info_text['Location'] = 'Location:% 20s' % ('(% 5.1f, % 5.1f)' % (transform.location.x, transform.location.y))
+        self._info_text['GNSS_info'] = 'GNSS:% 24s' % ('(% 2.6f, % 3.6f)' % (gnss_sensor.lat, gnss_sensor.lon)) if gnss_sensor else "GNSS: Unavailable"
+        self._info_text['height'] = 'Height:  % 18.0f m' % transform.location.z
+        # self._info_text['collission'] = 'Collision:'
 
-        if len(vehicles) > 1:
-            self._info_text += ['Nearby vehicles:']
-
-        def dist(l):
-            return math.sqrt((l.x - transform.location.x)**2 + (l.y - transform.location.y)
-                             ** 2 + (l.z - transform.location.z)**2)
-        vehicles = [(dist(x.get_location()), x) for x in vehicles if x.id != self._actor.id]
-
-        for dist, vehicle in sorted(vehicles):
-            if dist > 200.0:
-                break
-            vehicle_type = get_actor_display_name(vehicle, truncate=22)
-            self._info_text.append('% 4dm %s' % (dist, vehicle_type))
+        # control
+        self._control_text['Throttle'] = 'Throttle: % 12.0f' % control.throttle
+        self._control_text['Steer'] = 'Steer: % 15.0f' % control.steer
+        self._control_text['Brake'] = 'Brake: % 15.0f' % control.brake
+        self._control_text['Reverse'] = 'Reverse: % 13.0f' % control.reverse
+        self._control_text['Hand brake'] = 'Hand brake: % 10.0f' % control.hand_brake
+        self._control_text['Manual'] = 'Manual: % 14.0f' % control.manual_gear_shift
+        self._control_text['Gear'] = 'Gear:%17s' % {-1: 'R', 0: 'N'}.get(control.gear, control.gear)
 
     def toggle_info(self):
         """Toggle info on or off"""
@@ -278,13 +262,11 @@ class HUD(object):
 
     def notification(self, text, seconds=2.0):
         """Notification text"""
-        pass
-        # self._notifications.set_text(text, seconds=seconds)
+        self._notifications.set_text(text, seconds=seconds)
 
     def error(self, text):
         """Error text"""
-        pass
-        # self._notifications.set_text('Error: %s' % text, (255, 0, 0))
+        self._notifications.set_text('Error: %s' % text, (255, 0, 0))
 
     def render(self, display):
         """Render for HUD class"""
@@ -292,47 +274,36 @@ class HUD(object):
             w, h = display.size
             draw = ImageDraw.Draw(display, "RGBA")
             draw.rectangle(((0, 0), (220, h)), fill=(0, 0, 0, 128))
-            v_offset = 4
-            bar_h_offset = 100
-            bar_width = 106
+            v_offset = 8
+
+            draw.text((80, v_offset), "General Info", font=self._font, fill=(255, 255, 255, 255))
+            v_offset += 16
+            draw.line(((6, v_offset), (214, v_offset)), fill=(255, 136, 0, 255))
+            v_offset += 4
+
             for item in self._info_text:
                 if v_offset + 18 > h:
                     break
-                if isinstance(item, list):
-                    if len(item) > 1:
-                        points = [(int(x + 8), int(v_offset + 8 + (1 - y) * 30)) for x, y in enumerate(item)]
-                        for i in range(len(points) - 1):
-                            pt1 = points[i]
-                            pt2 = points[i + 1]
-                            draw.line((pt1, pt2), fill=(255, 136, 0, 255))
-                    item = None
-                    v_offset += 18
-                elif isinstance(item, tuple):
-                    if isinstance(item[1], bool):
-                        rect_w, rect_h = 6, 6
-                        left, top = bar_h_offset, v_offset + 8
-                        color = (255, 255, 255, 255)
-                        draw.rectangle(((left, top), (left + rect_w, top + rect_h)), fill=color)
-                    else:
-                        rect_w, rect_h = bar_width, 6
-                        left, top = bar_h_offset, v_offset + 8
-                        color = (255, 255, 255, 255)
-                        draw.rectangle(((left, top), (left + rect_w, top + rect_h)), outline=color)
-                        fig = (item[1] - item[2]) / (item[3] - item[2])
-                        if item[2] < 0.0:
-                            rect_w, rect_h = 6, 6
-                            left, top = bar_h_offset + int(fig * (bar_width - 6)), v_offset + 8
-                        else:
-                            rect_w, rect_h = int(fig * bar_width), 6
-                            left, top = bar_h_offset, v_offset + 8
-                        draw.rectangle(((left, top), (left + rect_w, top + rect_h)), fill=color)
-                    item = item[0]
                 if item:  # At this point has to be a str.
-                    draw.text((8, v_offset), item, font=self._font, fill=(255, 255, 255, 255))
+                    draw.text((8, v_offset), self._info_text[item], font=self._font, fill=(255, 255, 255, 255))
                 v_offset += 18
+
+            v_offset += 18
+            draw.text((80, v_offset), "Control Info", font=self._font, fill=(255, 255, 255, 255))
+            v_offset += 16
+            draw.line(((6, v_offset), (214, v_offset)), fill=(255, 136, 0, 255))
+            v_offset += 4
+
+            for item in self._control_text:
+                if v_offset + 18 > h:
+                    break
+                if item:  # At this point has to be a str.
+                    draw.text((8, v_offset), self._control_text[item], font=self._font, fill=(255, 255, 255, 255))
+                v_offset += 18
+
             # cv2.imshow("display", display)
             # cv2.waitKey(-1)
-        # self._notifications.render(display)
+        self._notifications.render(display)
 
 
 class CameraManager(object):
@@ -483,12 +454,15 @@ class CarlaActorProbeVisualizer(object):
             'birdview': ((self._width - self._subfigure_width, 0), (self._width, self._subfigure_width)),
             'linelidar': ((self._width - self._subfigure_width, self._subfigure_width), (self._width, self._subfigure_width * 2)),
         }
-
-
         self._camera_gamma = 2.2
         self._cam_pos_id = 0
         self._cam_index = 0
         self.reset(actor)
+
+        self._cnt = 0
+
+    def __del__(self):
+        self.destroy_sensors()
 
     def destroy_sensors(self):
         """Destroy sensors"""
@@ -513,6 +487,9 @@ class CarlaActorProbeVisualizer(object):
             self.add_birdview(birdview)
         if linelidar is not None:
             self.add_line_lidar(linelidar)
+        self._cnt += 1
+        # if self._cnt % 30 == 0:
+        #     self._hud.notification("Here is a test!")
 
     def get_visualize_img(self, birdview=None, linelidar=None):
         self.render(birdview=birdview, linelidar=linelidar)
@@ -521,7 +498,7 @@ class CarlaActorProbeVisualizer(object):
     def reset(self, actor):
         self._img = Image.new("RGB", (self._width, self._height))
         self._actor = actor
-        self._hud = HUD(self._actor)
+        self._hud = HUD(self._actor, (self._width, self._height))
         self.destroy_sensors()
         self._camera_manager = CameraManager(self._actor, self._hud, self._camera_gamma)
         self._camera_manager.transform_index = self._cam_pos_id
@@ -529,7 +506,7 @@ class CarlaActorProbeVisualizer(object):
         self.collision_sensor = CollisionSensor(self._actor, self._hud)
         self.lane_invasion_sensor = LaneInvasionSensor(self._actor, self._hud)
         self.gnss_sensor = GnssSensor(self._actor)
-
+        self._cnt = 0
 
     def add_birdview(self, birdview):
         birdview_img = self.get_birdview_obs_image(birdview)
