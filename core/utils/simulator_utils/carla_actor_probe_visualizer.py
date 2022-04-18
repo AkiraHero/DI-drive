@@ -10,9 +10,8 @@ import datetime
 import os
 import collections
 from carla import ColorConverter as cc
-
 from PIL import ImageFont, ImageDraw, Image
-# todo: sustitute all opencv by pil
+
 
 def find_weather_presets():
     """Method to find weather presets"""

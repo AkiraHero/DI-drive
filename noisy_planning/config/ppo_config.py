@@ -6,7 +6,7 @@ ppo_config = dict(
     only_eval=True,
     env=dict(
         collector_env_num=0,
-        evaluator_env_num=17,
+        evaluator_env_num=1,
         simulator=dict(
             town='Town01',
             spawn_manner="random",  # random, near
@@ -114,13 +114,13 @@ ppo_config = dict(
                 reset_timeout=120,
                 visualize=dict(
                             type='camera',
-                            outputs=['video'],
+                            outputs=['show'],
                         ),
             )
         ),
         wrapper=dict(
-            collect=dict(suite='race', suite_n_vehicles=60, suite_n_pedestrians=0, ),
-            eval=dict(suite='race', suite_n_vehicles=60, suite_n_pedestrians=0, ),
+            collect=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
+            eval=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
         ),
     ),
     server=[
@@ -146,7 +146,7 @@ ppo_config = dict(
             learner=dict(
                 hook=dict(
                     log_show_after_iter=1000,
-                    # load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-test_ppo_new-2022-04-08-07-55-34/ckpt/ckpt_interrupt.pth.tar',
+                    load_ckpt_before_run='/home/akira/Downloads/iteration_219000.pth.tar',
                     save_ckpt_after_iter=3000,
                 ),
             ),

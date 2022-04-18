@@ -780,6 +780,10 @@ class CarlaSimulator(BaseSimulator):
         while len(waypoint_curvature_list) < self._waypoint_num:
             waypoint_curvature_list.append(0.0)
 
+        # get surround vehicle waypoint inx
+
+        surround_v_info = self.get_neighbour_vehicles_nearest_waypoint_inx(20.0)
+
         if not self._off_road:
             current_waypoint = self._planner.current_waypoint
             node_waypoint = self._planner.node_waypoint
@@ -810,7 +814,8 @@ class CarlaSimulator(BaseSimulator):
             'waypoint_list': np.array(waypoint_location_list),
             'waypoint_curvature': np.array(waypoint_curvature_list),
             'speed_limit': np.array(speed_limit),
-            'direction_list': np.array(direction_list)
+            'direction_list': np.array(direction_list),
+            'surround_v_info': surround_v_info
         }
         return navigation
 
@@ -931,6 +936,36 @@ class CarlaSimulator(BaseSimulator):
             
         # clear all object
         self.clean_all_manual_actors()
+
+    def get_neighbour_vehicles_nearest_waypoint_inx(self, radius=20.0):
+        res_dict = {} # id: pos
+        actors = CarlaDataProvider.get_actors()
+        hero_actor = CarlaDataProvider.get_hero_actor()
+        hero_trans = CarlaDataProvider.get_transform(hero_actor)
+        for actor in actors:
+            if "vehicle" in actor.type_id:
+                trans = CarlaDataProvider.get_transform(actor)
+                if trans:
+                    if ((trans.location.x - hero_trans.location.x) ** 2 + (trans.location.y - hero_trans.location.y)) ** 0.5 < radius:
+                        waypoint_inx, = self.get_nearest_waypoint_on_route(trans)
+                        res_dict[actor.id] = waypoint_inx
+        if hero_actor.id in res_dict.keys():
+            res_dict.pop(hero_actor.id)
+        return res_dict
+
+    def get_nearest_waypoint_on_route(self, pos):
+        waypoints = CarlaDataProvider.get_hero_vehicle_route()
+        x = pos.x
+        y = pos.y
+        dis_min = 1000
+        target_inx = 0
+        for inx, pt in enumerate(waypoints):
+            d = np.sqrt((x - pt[0]) ** 2 + (y - pt[1]) ** 2)
+            if d < dis_min:
+                dis_min = d
+                target_inx = inx
+        return target_inx, waypoints[target_inx]
+
 
     @property
     def town_name(self) -> str:

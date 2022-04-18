@@ -152,12 +152,37 @@ class MapImage(object):
         return self.planner._route
 
     def draw_route(self, route):
+        route_distance = 0
+        mile_stones = [100 * i for i in range(20)]
+        mile_stone_inx = 0
         for i in range(len(route) - 1):
             w1 = route[i]
             w2 = route[i + 1]
             pt1 = self.world_to_pixel(w1[0].transform.location)
             pt2 = self.world_to_pixel(w2[0].transform.location)
             cv2.line(self.map_surface, pt1, pt2, (0, 0, 255), 5)
+
+            delta = w1[0].transform.location - w2[0].transform.location
+            dis_ = (delta.x ** 2 + delta.y ** 2) ** 0.5
+            route_distance += dis_
+            if route_distance > mile_stones[mile_stone_inx]:
+                pt = self.world_to_pixel(w2[0].transform.location)
+                cv2.circle(self.map_surface, pt, 10, (0, 0, 255), 20)
+                cv2.putText(self.map_surface, str(mile_stones[mile_stone_inx]) + "m", [pt[0] - 12, pt[1]], cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                            (0, 0, 0), 2)
+                print(str(mile_stones[mile_stone_inx]) + "m", w2[0].transform)
+                mile_stone_inx += 1
+
+    def draw_spw_pts(self, spw_pts):
+        for inx, i in enumerate(spw_pts):
+            pt = self.world_to_pixel(i.location)
+            cv2.circle(self.map_surface, pt, 10, (0, 255, 0), 20)
+
+        for inx, i in enumerate(spw_pts):
+            pt = self.world_to_pixel(i.location)
+            cv2.putText(self.map_surface, str(inx), [pt[0] - 12, pt[1]], cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 26, 253), 2)
+
+
 
 def save_spw_pt(pts, filename):
     infos = []
@@ -179,6 +204,8 @@ if __name__ == '__main__':
 
 
     spawn_points = map.get_spawn_points()
+    map_image.draw_spw_pts(spawn_points)
+
     save_spw_pt(spawn_points, "spw_pt_town5.pt")
     # st_spw_pt_inx = 266
     # ed_spw_pt_inx = 256
@@ -188,8 +215,8 @@ if __name__ == '__main__':
     # map_image.draw_route(route)
 
     #
-    st_spw_pt_inx = 265
-    ed_spw_pt_inx = 255
+    st_spw_pt_inx = 266
+    ed_spw_pt_inx = 256
     st_point = spawn_points[st_spw_pt_inx]
     ed_point = spawn_points[ed_spw_pt_inx]
     route = map_image.get_route(st_point, ed_point)

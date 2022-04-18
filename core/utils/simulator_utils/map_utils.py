@@ -5,6 +5,8 @@ Description:
 
 import os
 import math
+
+import cv2
 import numpy as np
 import pygame
 from easydict import EasyDict
@@ -834,6 +836,7 @@ class BeVWrapper(object):
         self.height = self._cfg.size[1]
         self.pixels_per_meter = self._cfg.pixels_per_meter
         self.pixels_ahead_vehicle = self._cfg.pixels_ahead_vehicle
+        self.big_map = None
 
     def init(self, client, world, carla_map, player, route=None):
         os.environ['SDL_VIDEODRIVER'] = 'dummy'
@@ -849,6 +852,8 @@ class BeVWrapper(object):
         )
 
         self.world_module.start()
+
+        self.big_map = self.init_big_map()
 
     def tick(self):
         self.world_module.tick()
@@ -885,3 +890,37 @@ class BeVWrapper(object):
         cfg = EasyDict(cls.config)
         cfg.cfg_type = cls.__name__ + 'Config'
         return copy.deepcopy(cfg)
+
+    def init_big_map(self):
+        big_road = self.world_module.map_image.map_surface
+        big_lane = self.world_module.map_image.lane_surface
+        h, w = big_road.size
+        canvas = np.zeros((h, w, 3), dtype=np.uint8)
+        canvas[big_road > 0.5] = (85, 87, 83)
+        canvas[big_lane > 0.5] = (211, 215, 207)
+        return canvas
+
+    def render_vehicle_map(self, bigmap):
+        v = self.world_module.vehicle_surface
+        bigmap[v > 0.5] = (252, 175, 62)
+
+    # todo:test and debug
+    def get_big_map(self, route=None, player_pos=None):
+        cur_big_map = copy.deepcopy(self.big_map)
+        # draw route
+        route_color = (0, 255, 0)
+        player_color = (0, 0, 255)
+        if route is not None:
+            pixel_list = []
+            for i in route:
+                p = self.world_to_pixel(i)
+                pixel_list.append(p)
+            for i in range(len(pixel_list) - 1):
+                pt1 = pixel_list[i]
+                pt2 = pixel_list[i + 1]
+                cv2.line(cur_big_map, pt1, pt2, route_color, 5)
+        if player_pos is not None:
+            pixel_player_pos = self.world_to_pixel(player_pos)
+            cv2.circle(cur_big_map, pixel_player_pos, 3, color=player_color)
+        self.render_vehicle_map(cur_big_map)
+        return cur_big_map
