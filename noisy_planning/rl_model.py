@@ -544,7 +544,7 @@ class PPORLModel(nn.Module):
             activation: Optional[nn.Module] = nn.ReLU(),
             norm_type: Optional[str] = None,
             sigma_type: Optional[str] = 'independent',
-            bound_type: Optional[str] = None,
+            bound_type: Optional[str] = 'tanh',
     ) -> None:
         super().__init__()
         self._obs_shape = obs_shape

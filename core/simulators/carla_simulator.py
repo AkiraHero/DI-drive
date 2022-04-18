@@ -317,7 +317,7 @@ class CarlaSimulator(BaseSimulator):
     def _spawn_hero_vehicle(self, start_pos: int = 0) -> None:
         start_waypoint = CarlaDataProvider.get_spawn_point(start_pos)
         self._start_location = start_waypoint.location
-        self._hero_actor = CarlaDataProvider.request_new_actor(VEHICLE_NAME, start_waypoint, ROLE_NAME)
+        self._hero_actor = CarlaDataProvider.request_new_actor(VEHICLE_NAME, start_waypoint, ROLE_NAME, add_random_factor=True)
 
     def _sort_spawn_point(self, points: list, st_pt_inx, ed_pt_inx=None):
         # use Manhattan distance (to do use planner distance, which can be calculated and saved before

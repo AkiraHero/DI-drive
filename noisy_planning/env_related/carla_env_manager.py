@@ -191,13 +191,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         # visualize
         self.render(timesteps)
 
-        # delete unnecessary data
-        unnecessary_keys = ['camera_vis']
-        for env_id, timestep in timesteps.items():
-            for k in unnecessary_keys:
-                if timestep.obs:
-                    if k in timestep.obs.keys():
-                        timestep.obs.pop(k)
+        
 
         for env_id, timestep in timesteps.items():
             if is_abnormal_timestep(timestep):
@@ -356,6 +350,10 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                     time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
                 )
                 self._visualizers[env_id].init(vis_name)
+                if self._ready_obs[env_id]:
+                    if "camera_vis" in self._ready_obs[env_id].keys():
+                        self._ready_obs[env_id].pop("camera_vis")
+                
 
             # Because each thread updates the corresponding env_id value, they won't lead to a thread-safe problem.
             self._env_states[env_id] = EnvState.RUN
@@ -532,3 +530,10 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 if self._visualizers[env_id] is not None:
                     self._visualizers[env_id].done()
                     self._visualizers[env_id] = None
+            
+            # delete unnecessary data
+            unnecessary_keys = ['camera_vis']
+            for k in unnecessary_keys:
+                if timestep.obs:
+                    if k in timestep.obs.keys():
+                        timestep.obs.pop(k)
