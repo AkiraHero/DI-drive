@@ -95,6 +95,9 @@ class CollisionSensor(object):
         if len(self.history) > 4000:
             self.history.pop(0)
 
+    def destroy(self):
+        self.sensor.destroy()
+
 
 
 class LaneInvasionSensor(object):
@@ -122,6 +125,9 @@ class LaneInvasionSensor(object):
         lane_types = set(x.type for x in event.crossed_lane_markings)
         text = ['%r' % str(x).split()[-1] for x in lane_types]
         self.hud.notification('Crossed line %s' % ' and '.join(text))
+
+    def destroy(self):
+        self.sensor.destroy()
 
 # ==============================================================================
 # -- GnssSensor --------------------------------------------------------
@@ -154,6 +160,9 @@ class GnssSensor(object):
             return
         self.lat = event.latitude
         self.lon = event.longitude
+    
+    def destroy(self):
+        self.sensor.destroy()
 
 
 class HUD(object):
@@ -488,6 +497,12 @@ class CarlaActorProbeVisualizer(object):
                 self._camera_manager.sensor.destroy()
                 self._camera_manager.sensor = None
             self._camera_manager.index = None
+
+        if self.gnss_sensor:
+            self.gnss_sensor.destroy()
+
+        if self.collision_sensor:
+            self.collision_sensor.destroy()
 
     def render(self, birdview=None, linelidar=None):
         self._camera_manager.render(self._img)
