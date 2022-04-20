@@ -2,6 +2,7 @@
 Copyright 2021 OpenDILab. All Rights Reserved:
 Description: Carla simulator.
 '''
+from turtle import pos
 import numpy as np
 import random
 from typing import Optional, Dict
@@ -177,10 +178,9 @@ class CarlaSimulator(BaseSimulator):
         self._camera_aug_cfg = self._cfg.aug
         self._verbose = self._cfg.verbose
         self._spawn_manner = self._cfg.spawn_manner
-        self._spawn_pos_path = self._cfg.spawn_pos_fix
-        self._spawn_pos_list = None
-        if self._spawn_pos_path:
-            self._spw_dynamic, self._spawn_pos_list = self._load_spw_pos()
+        self._spawn_poses_fixed = self._cfg.spawn_pos_fix
+        print("!!!!!!!!!!!!!!", self._spawn_poses_fixed)
+
 
 
         self._support_spawn_manner = ['random', 'near']
@@ -262,8 +262,8 @@ class CarlaSimulator(BaseSimulator):
 
             self._spawn_hero_vehicle(start_pos=start)
             self._prepare_observations()
-            if self._spawn_pos_list is not None:
-                self._spawn_vehicles_fixed(self._spawn_pos_list, dynamic=self._spw_dynamic)
+            if self._spawn_poses_fixed is not None:
+                self._spawn_vehicles_fixed(self._spawn_poses_fixed, dynamic=False)
             else:
                 self._spawn_vehicles()
             self._spawn_pedestrians()
@@ -335,7 +335,7 @@ class CarlaSimulator(BaseSimulator):
 
     def _load_spw_pos(self):
         pos_list = []
-        with open(self._spawn_pos_path, 'r') as f:
+        with open(self._spawn_poses_fixed, 'r') as f:
             dynamic = f.readline().strip('\n')
             lines = f.readlines()
             for i in lines:
@@ -350,7 +350,7 @@ class CarlaSimulator(BaseSimulator):
             return dynamic, pos_list
 
 
-    def _spawn_vehicles_fixed(self, poses, dynamic=False) -> None:
+    def _spawn_vehicles_fixed(self, poses, dynamic=False, num=1) -> None:
         blueprints = self._blueprints.filter('vehicle.*')
         if self._disable_two_wheels:
             blueprints = [x for x in blueprints if int(x.get_attribute('number_of_wheels')) == 4]
@@ -360,7 +360,20 @@ class CarlaSimulator(BaseSimulator):
         FutureActor = carla.command.FutureActor
 
         batch = []
+        if num > len(poses):
+            num = len(poses)
+        poses_inx = np.random.choice([i for i in range(len(poses))], num)
+        poses = [poses[i] for i in poses_inx]
         for n, transform in enumerate(poses):
+            random_factor_x = np.random.rand() % 0.4 - 0.2 # +-0.2m
+            random_factor_y = np.random.rand() % 0.4 - 0.2
+            random_factor_yaw = np.random.randint(30) - 15 # +-15 deg
+            _spawn_point = carla.Transform(carla.Location(), carla.Rotation())
+            _spawn_point.location.x = transform[0] + random_factor_x
+            _spawn_point.location.y = transform[1] + random_factor_y
+            _spawn_point.location.z = transform[2]
+            _spawn_point.rotation.yaw = transform[3] + random_factor_yaw
+
             blueprint = random.choice(blueprints)
             if blueprint.has_attribute('color'):
                 color = random.choice(blueprint.get_attribute('color').recommended_values)
@@ -372,10 +385,10 @@ class CarlaSimulator(BaseSimulator):
             # spawn the cars and set their autopilot and light state all together
             if dynamic:
                 blueprint.set_attribute('role_name', 'autopilot')
-                batch.append(SpawnActor(blueprint, transform).then(SetAutopilot(FutureActor, True, self._tm.get_port())))
+                batch.append(SpawnActor(blueprint, _spawn_point).then(SetAutopilot(FutureActor, True, self._tm.get_port())))
             else:
                 blueprint.set_attribute('role_name', 'static')
-                batch.append(SpawnActor(blueprint, transform))
+                batch.append(SpawnActor(blueprint, _spawn_point))
 
         for response in self._client.apply_batch_sync(batch, True):
             if response.error:
@@ -751,22 +764,65 @@ class CarlaSimulator(BaseSimulator):
         self._end_distance = self._planner.distance_to_goal
         self._end_timeout = self._planner.timeout
 
+        # if self._bev_wrapper is not None:
+        #     self._bev_wrapper.update_waypoints(waypoint_list)
+
+        # there are some problem with the waypoints from behavior planner... so we cal it by ourselves
+
+        hero_route = CarlaDataProvider.get_hero_vehicle_route()
+        hero_actor = CarlaDataProvider.get_hero_actor()
+        hero_pose = CarlaDataProvider.get_transform(hero_actor)
+        hero_yaw = hero_pose.rotation.yaw
+        hero_x = hero_pose.location.x
+        hero_y = hero_pose.location.y
+        # find the nearest way point in hero route
+        nearest_inx = 0
+        nearest_dis = 10000000000
+        for inx, waypoint in enumerate(hero_route):
+            x = waypoint[0].transform.location.x
+            y = waypoint[0].transform.location.y
+            # cal dis
+            dis = ((x - hero_x) ** 2 + (y - hero_y) ** 2) ** 0.5
+            if dis < nearest_dis:
+                nearest_dis = dis
+                nearest_inx = inx
+        nearest_waypoint = hero_route[nearest_inx]
+        nearest_waypoint = nearest_waypoint[0].transform
+        nearest_waypoint_forward = nearest_waypoint.rotation.get_forward_vector()
+        nearest_waypoint = [nearest_waypoint.location.x, nearest_waypoint.location.y, nearest_waypoint.location.z, nearest_waypoint.rotation.yaw]
+        our_waypoint_list = []
+        for i in range(self._waypoint_num):
+            cur_inx = nearest_inx + i
+            if cur_inx < len(hero_route):
+                our_waypoint_list.append(hero_route[cur_inx][0])
+        # for visualize
         if self._bev_wrapper is not None:
-            self._bev_wrapper.update_waypoints(waypoint_list)
+            self._bev_wrapper.update_waypoints(our_waypoint_list)
+
+        # # debug print way points
+        # print("============our way=================")
+        # for i in our_waypoint_list:
+        #     print(i.transform.location.x, i.transform.location.y, i.transform.location.z, i.transform.rotation.yaw)
+        # print("==========nearest========")
+        # print(nearest_waypoint)
+
+        
 
         waypoint_location_list = []
-        for wp in waypoint_list:
+        for wp in our_waypoint_list:
             wp_loc = wp.transform.location
             wp_vec = wp.transform.rotation.get_forward_vector()
             waypoint_location_list.append([wp_loc.x, wp_loc.y, wp_vec.x, wp_vec.y])
         waypoint_curvature_list = []
-        for inx in range(len(waypoint_list) - 1):
-            wp = waypoint_list[inx]
-            wp_nxt = waypoint_list[inx + 1]
+        for inx in range(len(our_waypoint_list) - 1):
+            wp = our_waypoint_list[inx]
+            wp_nxt = our_waypoint_list[inx + 1]
 
             loc_diff = wp.transform.location - wp_nxt.transform.location
             wp_dis = (loc_diff.x ** 2 + loc_diff.y ** 2 + loc_diff.z ** 2)
-            assert wp_dis > 0
+            if wp_dis <= 0:
+                continue
+            assert wp_dis > 0, "wp_dis={}".format(wp_dis)
             wp_dis = wp_dis ** 0.5
             node_yaw = wp.transform.rotation.yaw
             node_yaw_nxt = wp_nxt.transform.rotation.yaw
@@ -779,6 +835,10 @@ class CarlaSimulator(BaseSimulator):
             waypoint_curvature_list.append(curvature)
         while len(waypoint_curvature_list) < self._waypoint_num:
             waypoint_curvature_list.append(0.0)
+
+
+        # print("============way curvature================")
+        # print(waypoint_curvature_list)
 
         if not self._off_road:
             current_waypoint = self._planner.current_waypoint
@@ -804,13 +864,15 @@ class CarlaSimulator(BaseSimulator):
             'command': command.value,
             'node': np.array([node_location.x, node_location.y]),
             'node_forward': np.array([node_forward.x, node_forward.y, node_forward.z]),
+            'nearest_waypoint_forward': np.array([nearest_waypoint_forward.x, nearest_waypoint_forward.y, nearest_waypoint_forward.z]),
             'node_yaw': np.array(self._planner.node_waypoint.transform.rotation.yaw),
             'target': np.array([target_location.x, target_location.y, target_location.z]),
             'target_forward': np.array([target_forward.x, target_forward.y, target_forward.z]),
             'waypoint_list': np.array(waypoint_location_list),
             'waypoint_curvature': np.array(waypoint_curvature_list),
             'speed_limit': np.array(speed_limit),
-            'direction_list': np.array(direction_list)
+            'direction_list': np.array(direction_list),
+            'nearest_waypoint': np.array(nearest_waypoint)
         }
         return navigation
 

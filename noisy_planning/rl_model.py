@@ -543,7 +543,7 @@ class PPORLModel(nn.Module):
             critic_head_layer_num: int = 1,
             activation: Optional[nn.Module] = nn.ReLU(),
             norm_type: Optional[str] = None,
-            sigma_type: Optional[str] = 'independent',
+            sigma_type: Optional[str] = 'fixed',
             bound_type: Optional[str] = 'tanh',
     ) -> None:
         super().__init__()
@@ -572,6 +572,7 @@ class PPORLModel(nn.Module):
                 action_shape,
                 actor_head_layer_num,
                 sigma_type=sigma_type,
+                fixed_sigma_value=0.1,
                 activation=activation,
                 norm_type=norm_type,
                 bound_type=bound_type

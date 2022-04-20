@@ -3,14 +3,20 @@ from easydict import EasyDict
 ppo_config = dict(
     exp_name='ppo21_bev32_lr1e4_bs128_ns3000_update5_train_ft',
     enable_eval=True,
-    only_eval=True,
+    only_eval=False,
     env=dict(
-        collector_env_num=0,
-        evaluator_env_num=17,
+        collector_env_num=14,
+        evaluator_env_num=3,
         simulator=dict(
             town='Town01',
             spawn_manner="random",  # random, near
-            spawn_pos_fix="",
+            # spawn_pos_fix=[
+            #     (-29.6, -203.5, 2.5, 180),
+            #     (-18.6, -204.3, 2.5, 180),
+            #     (-43.4, -201.5, 5.5, 180),
+            #     (-57.4, -207.0, 7.5, 180),
+            #     (-197.7, -190.1, 10.5, 147)
+            # ],
             delta_seconds=0.1,
             disable_two_wheels=True,
             verbose=False,
@@ -84,6 +90,7 @@ ppo_config = dict(
         off_route_distance=15,
         # reward_func="customized_compute_reward",
         reward_func="racing_reward",
+        add_camera_vis_to_obs=False,
         #reward_type=['goal', 'distance', 'speed', 'angle', 'failure', 'lane'],
         success_distance=2.0,
         success_reward=0,
@@ -112,15 +119,15 @@ ppo_config = dict(
                 retry_type='renew',
                 step_timeout=120,
                 reset_timeout=120,
-                visualize=dict(
-                            type='camera',
-                            outputs=['video'],
-                        ),
+                # visualize=dict(
+                #             type='camera',
+                #             outputs=['video'],
+                #         ),
             )
         ),
         wrapper=dict(
-            collect=dict(suite='race', suite_n_vehicles=60, suite_n_pedestrians=0, ),
-            eval=dict(suite='race', suite_n_vehicles=60, suite_n_pedestrians=0, ),
+            collect=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
+            eval=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
         ),
     ),
     server=[
@@ -146,7 +153,7 @@ ppo_config = dict(
             learner=dict(
                 hook=dict(
                     log_show_after_iter=1000,
-                    # load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-test_ppo_new-2022-04-08-07-55-34/ckpt/ckpt_interrupt.pth.tar',
+                    # load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-tanh-2022-04-18-09-37-08/ckpt/iteration_18000.pth.tar',
                     save_ckpt_after_iter=3000,
                 ),
             ),
@@ -164,8 +171,8 @@ ppo_config = dict(
         ),
         eval=dict(
             evaluator=dict(
-                eval_freq=3000,
-                n_episode=50,
+                eval_freq=2000,
+                n_episode=20,
                 stop_rate=1.0,
                 transform_obs=True,
                 eval_once=False

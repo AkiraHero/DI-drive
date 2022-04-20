@@ -1,4 +1,5 @@
 import copy
+from tkinter.messagebox import NO
 import numpy as np
 import carla
 import re
@@ -211,7 +212,7 @@ class HUD(object):
         self.frame = timestamp.frame_count
         self.simulation_time = timestamp.elapsed_seconds
 
-    def tick(self, gnss_sensor=None, collision_sensor=None):
+    def tick(self, gnss_sensor=None, collision_sensor=None, otherobs=None):
         """HUD method for every tick"""
         self._notifications.tick()
         if not self._show_info:
@@ -248,12 +249,12 @@ class HUD(object):
         # self._info_text['collission'] = 'Collision:'
 
         # control
-        self._control_text['Throttle'] = 'Throttle: % 12.0f' % control.throttle
-        self._control_text['Steer'] = 'Steer: % 15.0f' % control.steer
-        self._control_text['Brake'] = 'Brake: % 15.0f' % control.brake
-        self._control_text['Reverse'] = 'Reverse: % 13.0f' % control.reverse
-        self._control_text['Hand brake'] = 'Hand brake: % 10.0f' % control.hand_brake
-        self._control_text['Manual'] = 'Manual: % 14.0f' % control.manual_gear_shift
+        self._control_text['Throttle'] = 'Throttle: % 12.2f' % control.throttle
+        self._control_text['Steer'] = 'Steer: % 15.2f' % control.steer
+        self._control_text['Brake'] = 'Brake: % 15.2f' % control.brake
+        self._control_text['Reverse'] = 'Reverse: % 13.2f' % control.reverse
+        self._control_text['Hand brake'] = 'Hand brake: % 10.2f' % control.hand_brake
+        self._control_text['Manual'] = 'Manual: % 14.2f' % control.manual_gear_shift
         self._control_text['Gear'] = 'Gear:%17s' % {-1: 'R', 0: 'N'}.get(control.gear, control.gear)
 
     def toggle_info(self):
@@ -478,9 +479,9 @@ class CarlaActorProbeVisualizer(object):
         if self.collision_sensor:
             self.collision_sensor.destroy()
 
-    def render(self, birdview=None, linelidar=None):
+    def render(self, birdview=None, linelidar=None, otherobs=None):
         self._camera_manager.render(self._img)
-        self._hud.tick(collision_sensor=self.collision_sensor, gnss_sensor=self.gnss_sensor)
+        self._hud.tick(collision_sensor=self.collision_sensor, gnss_sensor=self.gnss_sensor, otherobs=otherobs)
         self._hud.render(self._img)
 
         if birdview is not None:
@@ -491,8 +492,8 @@ class CarlaActorProbeVisualizer(object):
         # if self._cnt % 30 == 0:
         #     self._hud.notification("Here is a test!")
 
-    def get_visualize_img(self, birdview=None, linelidar=None):
-        self.render(birdview=birdview, linelidar=linelidar)
+    def get_visualize_img(self, birdview=None, linelidar=None, otherobs=None):
+        self.render(birdview=birdview, linelidar=linelidar, otherobs=otherobs)
         return np.array(self._img)
 
     def reset(self, actor):

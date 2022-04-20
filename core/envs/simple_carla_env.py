@@ -429,7 +429,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
             self._stuck_detector.tick(state['speed'])
 
         # cal heading diff
-        heading_diff = state['yaw'] - navigation['node_yaw']
+        heading_diff = state['yaw'] - navigation['nearest_waypoint'][3]  # todo recal
         while heading_diff < -180.0:
             heading_diff += 360.0
         while heading_diff > 180.0:
@@ -707,7 +707,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
             location = self._simulator_databuffer['state']['location']
             location_change = location - last_location
             # project to waypoint direction
-            direction = self._simulator_databuffer['navigation']['node_forward']
+            direction = self._simulator_databuffer['navigation']['nearest_waypoint_forward']
             moving_dis_proj = (location_change * direction).sum()
             moving_reward = moving_dis_proj
             # print("============================================")
@@ -739,45 +739,45 @@ class SimpleCarlaEnv(BaseDriveEnv):
 
 
 
-        # goal reward
-        goal_reward = 0
-        plan_distance = self._simulator.end_distance
-        if self.is_success():
-            goal_reward += self._success_reward
-        elif self.is_failure():
-            goal_reward -= 1
+        # # goal reward
+        # goal_reward = 0
+        # plan_distance = self._simulator.end_distance
+        # if self.is_success():
+        #     goal_reward += self._success_reward
+        # elif self.is_failure():
+        #     goal_reward -= 1
 
-        # distance reward
-        location = self._simulator_databuffer['state']['location']
-        target = self._simulator_databuffer['navigation']['target']
-        target_distance = dist(target, location)
-        cur_distance = plan_distance + target_distance
-        if self._last_distance is None:
-            distance_reward = 0
-        else:
-            distance_reward = np.clip((self._last_distance - cur_distance) * 2, 0, 1)
-        self._last_distance = cur_distance
+        # # distance reward
+        # location = self._simulator_databuffer['state']['location']
+        # target = self._simulator_databuffer['navigation']['target']
+        # target_distance = dist(target, location)
+        # cur_distance = plan_distance + target_distance
+        # if self._last_distance is None:
+        #     distance_reward = 0
+        # else:
+        #     distance_reward = np.clip((self._last_distance - cur_distance) * 2, 0, 1)
+        # self._last_distance = cur_distance
 
-        # state reward: speed, angle, steer, mid lane
-        speed = self._simulator_databuffer['state']['speed'] / 3.6
-        speed_limit = self._simulator_databuffer['navigation']['speed_limit'] / 3.6
-        speed_limit = min(self._max_speed, speed_limit)
-        agent_state = self._simulator_databuffer['navigation']['agent_state']
-        target_speed = speed_limit
-        if agent_state == 2 or agent_state == 3:
-            target_speed = 0
-        elif agent_state == 4 and not self._ignore_light:
-            target_speed = 0
-        # speed_reward = 1 - abs(speed - target_speed) / speed_limit
-        speed_reward = 0
-        if speed < target_speed / 5:
-            speed_reward -= 1
-        if speed > target_speed:
-            speed_reward -= 1
+        # # state reward: speed, angle, steer, mid lane
+        # speed = self._simulator_databuffer['state']['speed'] / 3.6
+        # speed_limit = self._simulator_databuffer['navigation']['speed_limit'] / 3.6
+        # speed_limit = min(self._max_speed, speed_limit)
+        # agent_state = self._simulator_databuffer['navigation']['agent_state']
+        # target_speed = speed_limit
+        # if agent_state == 2 or agent_state == 3:
+        #     target_speed = 0
+        # elif agent_state == 4 and not self._ignore_light:
+        #     target_speed = 0
+        # # speed_reward = 1 - abs(speed - target_speed) / speed_limit
+        # speed_reward = 0
+        # if speed < target_speed / 5:
+        #     speed_reward -= 1
+        # if speed > target_speed:
+        #     speed_reward -= 1
 
-        forward_vector = self._simulator_databuffer['state']['forward_vector']
-        target_forward = self._simulator_databuffer['navigation']['target_forward']
-        angle_reward = 3 * (0.1 - angle(forward_vector, target_forward) / np.pi)
+        # forward_vector = self._simulator_databuffer['state']['forward_vector']
+        # target_forward = self._simulator_databuffer['navigation']['target_forward']
+        # angle_reward = 3 * (0.1 - angle(forward_vector, target_forward) / np.pi)
 
         steer = self._simulator_databuffer['action'].get('steer', 0)
         command = self._simulator_databuffer['navigation']['command']
@@ -792,26 +792,26 @@ class SimpleCarlaEnv(BaseDriveEnv):
             steer_reward = 0
         self._last_steer = steer
 
-        waypoint_list = self._simulator_databuffer['navigation']['waypoint_list']
+        # waypoint_list = self._simulator_databuffer['navigation']['waypoint_list']
 
-        # todo: the lane mid dis should be checked carefully in turn area / open road-crossing
-        lane_mid_dis = abs(lane_mid_distance(waypoint_list, location))
-        lrw = 0.0
-        if lane_mid_dis < 0.1:
-            lrw = 0.3
-        elif lane_mid_dis < 0.3:
-            lrw = 0.1
-        elif lane_mid_dis < 0.6:
-            lrw = 0.0
-        elif lane_mid_dis < 0.8:
-            lrw = -0.3
-        elif lane_mid_dis < 1.0:
-            lrw = -0.5
-        else:
-            lrw = -2.0
-        lane_reward = lrw
+        # # todo: the lane mid dis should be checked carefully in turn area / open road-crossing
+        # lane_mid_dis = abs(lane_mid_distance(waypoint_list, location))
+        # lrw = 0.0
+        # if lane_mid_dis < 0.1:
+        #     lrw = 0.3
+        # elif lane_mid_dis < 0.3:
+        #     lrw = 0.1
+        # elif lane_mid_dis < 0.6:
+        #     lrw = 0.0
+        # elif lane_mid_dis < 0.8:
+        #     lrw = -0.3
+        # elif lane_mid_dis < 1.0:
+        #     lrw = -0.5
+        # else:
+        #     lrw = -2.0
+        # lane_reward = lrw
 
-        failure_reward = 0
+        # failure_reward = 0
         # if self._col_is_failure and self._collided:
         #     failure_reward += self._failure_reward
         # elif self._stuck_is_failure and self._stuck:
@@ -825,8 +825,8 @@ class SimpleCarlaEnv(BaseDriveEnv):
         # add weight to failure reward
         #failure_reward *= 50
 
-        if self.is_failure():
-            failure_reward = self._failure_reward
+        # if self.is_failure():
+            # failure_reward = self._failure_reward
 
 
 
