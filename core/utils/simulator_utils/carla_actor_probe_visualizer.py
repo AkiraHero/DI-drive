@@ -14,12 +14,16 @@ from carla import ColorConverter as cc
 from collections import OrderedDict
 
 from PIL import ImageFont, ImageDraw, Image
+
+
 # todo: sustitute all opencv by pil
 
 def find_weather_presets():
     """Method to find weather presets"""
     rgx = re.compile('.+?(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|$)')
+
     def name(x): return ' '.join(m.group(0) for m in rgx.finditer(x))
+
     presets = [x for x in dir(carla.WeatherParameters) if re.match('[A-Z].+', x)]
     return [(getattr(carla.WeatherParameters, x), name(x)) for x in presets]
 
@@ -113,7 +117,6 @@ class CollisionSensor(object):
         self.sensor.destroy()
 
 
-
 class LaneInvasionSensor(object):
     """Class for lane invasion sensors"""
 
@@ -142,6 +145,7 @@ class LaneInvasionSensor(object):
 
     def destroy(self):
         self.sensor.destroy()
+
 
 # ==============================================================================
 # -- GnssSensor --------------------------------------------------------
@@ -174,7 +178,7 @@ class GnssSensor(object):
             return
         self.lat = event.latitude
         self.lon = event.longitude
-    
+
     def destroy(self):
         self.sensor.destroy()
 
@@ -195,7 +199,8 @@ class HUD(object):
 
         self._info_text = None
         self._control_text = None
-
+        self._reward_text = None
+        self._route_text = None
 
         self._font_file = os.path.join(os.path.dirname(__file__), "font/ubuntu-mono/UbuntuMono-Regular.ttf")
         self._font_size = 12
@@ -240,11 +245,14 @@ class HUD(object):
         # general info
         self._info_text['Vehicle'] = 'Vehicle: % 20s' % get_actor_display_name(self._actor, truncate=20)
         self._info_text['Map'] = 'Map:     % 20s' % map_name
-        self._info_text['Simulation time'] = 'Simulation time: % 12s' % datetime.timedelta(seconds=int(self.simulation_time))
-        self._info_text['Speed'] = 'Speed:   % 15.0f km/h' % (3.6 * math.sqrt(vel.x**2 + vel.y**2 + vel.z**2))
+        self._info_text['Simulation time'] = 'Simulation time: % 12s' % datetime.timedelta(
+            seconds=int(self.simulation_time))
+        self._info_text['Speed'] = 'Speed:   % 15.0f km/h' % (3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2))
         self._info_text['heading'] = u'Heading:% 16.0f\N{DEGREE SIGN} % 2s' % (transform.rotation.yaw, heading)
-        self._info_text['Location'] = 'Location:% 20s' % ('(% 5.1f, % 5.1f)' % (transform.location.x, transform.location.y))
-        self._info_text['GNSS_info'] = 'GNSS:% 24s' % ('(% 2.6f, % 3.6f)' % (gnss_sensor.lat, gnss_sensor.lon)) if gnss_sensor else "GNSS: Unavailable"
+        self._info_text['Location'] = 'Location:% 20s' % (
+                    '(% 5.1f, % 5.1f)' % (transform.location.x, transform.location.y))
+        self._info_text['GNSS_info'] = 'GNSS:% 24s' % (
+                    '(% 2.6f, % 3.6f)' % (gnss_sensor.lat, gnss_sensor.lon)) if gnss_sensor else "GNSS: Unavailable"
         self._info_text['height'] = 'Height:  % 18.0f m' % transform.location.z
         # self._info_text['collission'] = 'Collision:'
 
@@ -256,6 +264,18 @@ class HUD(object):
         self._control_text['Hand brake'] = 'Hand brake: % 10.2f' % control.hand_brake
         self._control_text['Manual'] = 'Manual: % 14.2f' % control.manual_gear_shift
         self._control_text['Gear'] = 'Gear:%17s' % {-1: 'R', 0: 'N'}.get(control.gear, control.gear)
+
+        # handle other obs
+        self._reward_text = {}
+        self._route_text = {}
+        if otherobs is not None:
+            for k, v in otherobs['reward_info'].items():
+                self._reward_text[k] = "%s: % 7.2f" % (k, v)
+            for k, v in otherobs['route_info'].items():
+                self._route_text[k] = "%s: % 7.2f" % (k, v)
+
+
+
 
     def toggle_info(self):
         """Toggle info on or off"""
@@ -300,6 +320,33 @@ class HUD(object):
                     break
                 if item:  # At this point has to be a str.
                     draw.text((8, v_offset), self._control_text[item], font=self._font, fill=(255, 255, 255, 255))
+                v_offset += 18
+
+            v_offset += 18
+            draw.text((80, v_offset), "Reward Info", font=self._font, fill=(255, 255, 255, 255))
+            v_offset += 16
+            draw.line(((6, v_offset), (214, v_offset)), fill=(255, 136, 0, 255))
+            v_offset += 4
+
+            for item in self._reward_text:
+                if v_offset + 18 > h:
+                    break
+                if item:  # At this point has to be a str.
+                    draw.text((8, v_offset), self._reward_text[item], font=self._font, fill=(255, 255, 255, 255))
+                v_offset += 18
+
+
+            v_offset += 18
+            draw.text((70, v_offset), "Route Info(from planner)", font=self._font, fill=(255, 255, 255, 255))
+            v_offset += 16
+            draw.line(((6, v_offset), (214, v_offset)), fill=(255, 136, 0, 255))
+            v_offset += 4
+
+            for item in self._route_text:
+                if v_offset + 18 > h:
+                    break
+                if item:  # At this point has to be a str.
+                    draw.text((8, v_offset), self._route_text[item], font=self._font, fill=(255, 255, 255, 255))
                 v_offset += 18
 
             # cv2.imshow("display", display)
@@ -365,7 +412,7 @@ class CameraManager(object):
         """Set a sensor"""
         index = index % len(self.sensors)
         needs_respawn = True if self.index is None else (
-            force_respawn or (self.sensors[index][0] != self.sensors[self.index][0]))
+                force_respawn or (self.sensors[index][0] != self.sensors[self.index][0]))
         if needs_respawn:
             if self.sensor is not None:
                 self.sensor.destroy()
@@ -451,9 +498,10 @@ class CarlaActorProbeVisualizer(object):
 
         # arrange sub figure
         self._subfigure_width = 160
-        self._subfigure_rect =  {
+        self._subfigure_rect = {
             'birdview': ((self._width - self._subfigure_width, 0), (self._width, self._subfigure_width)),
-            'linelidar': ((self._width - self._subfigure_width, self._subfigure_width), (self._width, self._subfigure_width * 2)),
+            'linelidar': (
+            (self._width - self._subfigure_width, self._subfigure_width), (self._width, self._subfigure_width * 2)),
         }
         self._camera_gamma = 2.2
         self._cam_pos_id = 0

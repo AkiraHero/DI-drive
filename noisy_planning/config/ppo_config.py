@@ -3,10 +3,10 @@ from easydict import EasyDict
 ppo_config = dict(
     exp_name='ppo21_bev32_lr1e4_bs128_ns3000_update5_train_ft',
     enable_eval=True,
-    only_eval=False,
+    only_eval=True,
     env=dict(
-        collector_env_num=14,
-        evaluator_env_num=3,
+        collector_env_num=0,
+        evaluator_env_num=1,
         simulator=dict(
             town='Town01',
             spawn_manner="random",  # random, near
@@ -90,7 +90,7 @@ ppo_config = dict(
         off_route_distance=15,
         # reward_func="customized_compute_reward",
         reward_func="racing_reward",
-        add_camera_vis_to_obs=False,
+        add_camera_vis_to_obs=True,
         #reward_type=['goal', 'distance', 'speed', 'angle', 'failure', 'lane'],
         success_distance=2.0,
         success_reward=0,
@@ -119,10 +119,10 @@ ppo_config = dict(
                 retry_type='renew',
                 step_timeout=120,
                 reset_timeout=120,
-                # visualize=dict(
-                #             type='camera',
-                #             outputs=['video'],
-                #         ),
+                visualize=dict(
+                            type='camera',
+                            outputs=['show'],
+                        ),
             )
         ),
         wrapper=dict(

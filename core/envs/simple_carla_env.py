@@ -139,11 +139,12 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._render_buffer = None
         self._last_canvas = None
         self._probe_camera_visualizer = None
-        self.logger.warning("Using reward function: {}, suc_reward={}, fail_reward={}".format(self._cfg.reward_func, self._success_reward, self._failure_reward))
+        self.logger.warning("Using reward function: {}, suc_reward={}, fail_reward={}".format(self._cfg.reward_func,
+                                                                                              self._success_reward,
+                                                                                              self._failure_reward))
         self._reward_func = self.__getattribute__(self._cfg.reward_func)
         self._suite_name = None
         self._failure_reason = None
-
 
         # update at the end of step(), reset in reset()
         self._last_steer_obs = 0
@@ -152,7 +153,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
     def _init_carla_simulator(self) -> None:
         if not self._use_local_carla:
             print("------ Run Carla on Port: %d, GPU: %d ------" % (self._carla_port, 0))
-            #self.carla_process = subprocess.Popen()
+            # self.carla_process = subprocess.Popen()
             self._simulator = CarlaSimulator(
                 cfg=self._simulator_cfg,
                 client=None,
@@ -250,9 +251,9 @@ class SimpleCarlaEnv(BaseDriveEnv):
             Tuple[Any, float, bool, Dict]: A tuple contains observation, reward, done and information.
         """
         # if self.weird_bug:
-            # self.logger.error("now print weird bug stacks===========================================")
-            # traceback.print_stack()            
-            # self.logger.error("============================================hope it helps u============")
+        # self.logger.error("now print weird bug stacks===========================================")
+        # traceback.print_stack()
+        # self.logger.error("============================================hope it helps u============")
         # self.logger.error("start to perform step... ")
         if action is not None:
             for key in ['throttle', 'brake']:
@@ -327,11 +328,30 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 self._visualizer = None
             # self.logger.error("done over.................................................................")
 
-
         # update last
         steer = self._simulator_databuffer['action'].get('steer', 0)
         self._last_steer_obs = steer
         self._last_location = self._simulator_databuffer['state']['location']
+
+        #  get visualization image, todo: move it to vis in timestep
+        obs_for_vis = {
+
+        }
+        obs_for_vis.update({"reward_info": reward_info})
+        obs_for_vis.update({"obs": obs})
+        obs_for_vis.update({"route_info":
+            {
+                'end_timeout': self._simulator.end_timeout,
+                'end_distance': self._simulator.end_distance,
+                'total_distance': self._simulator.total_distance,
+            }
+        })
+
+        if self._add_camera_vis_to_obs:
+            obs['camera_vis'] = self._probe_camera_visualizer.get_visualize_img(birdview=obs['birdview'],
+                                                                                linelidar=obs['linelidar'],
+                                                                                otherobs=obs_for_vis
+                                                                                )
 
         return obs, self._reward, done, info
 
@@ -444,8 +464,6 @@ class SimpleCarlaEnv(BaseDriveEnv):
             else:
                 collide_with_wall = True
 
-
-
         obs.update(sensor_data)
         obs.update(
             {
@@ -482,16 +500,12 @@ class SimpleCarlaEnv(BaseDriveEnv):
             }
         )
 
-        if self._add_camera_vis_to_obs:
-            obs['camera_vis'] = self._probe_camera_visualizer.get_visualize_img(birdview=obs['birdview'],
-                                                                                linelidar=obs['linelidar'])
-
         if self._visualizer is not None:
             if self._visualize_cfg.type not in sensor_data:
                 raise ValueError("visualize type {} not in sensor data!".format(self._visualize_cfg.type))
             self._render_buffer = sensor_data[self._visualize_cfg.type].copy()
             if self._visualize_cfg.type == 'birdview':
-                self._render_buffer = visualize_birdview(self._render_buffer)        
+                self._render_buffer = visualize_birdview(self._render_buffer)
         return obs
 
     # https://github.com/cjy1992/gym-carla/blob/master/gym_carla/envs/carla_env.py
@@ -544,7 +558,6 @@ class SimpleCarlaEnv(BaseDriveEnv):
         for k, v in reward_info.items():
             total_reward += v
         return total_reward, reward_info
-
 
     def customized_compute_reward(self) -> Tuple[float, Dict]:
         """
@@ -650,7 +663,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         # elif self._wrong_direction_is_failure and self._wrong_direction:
         #     failure_reward += self._failure_reward
         # add weight to failure reward
-        #failure_reward *= 50
+        # failure_reward *= 50
 
         if self.is_failure():
             failure_reward = self._failure_reward
@@ -725,19 +738,18 @@ class SimpleCarlaEnv(BaseDriveEnv):
         if self._collided:
             if 'vehicle' in self._collided_info[1]:
                 collision_dynamic_reward = -speed ** 2
-                self.logger.error('!!![Collide car]'+"reward={}".format(collision_dynamic_reward)+ ",speed={}".format(speed))
+                self.logger.error(
+                    '!!![Collide car]' + "reward={}".format(collision_dynamic_reward) + ",speed={}".format(speed))
             elif 'walker' in self._collided_info[1]:
                 collision_dynamic_reward = -speed ** 2
-                self.logger.error('!!![Collide man]'+"reward={}".format(collision_dynamic_reward)+ ",speed={}".format(speed))
+                self.logger.error(
+                    '!!![Collide man]' + "reward={}".format(collision_dynamic_reward) + ",speed={}".format(speed))
             else:
                 collision_static_reward = -speed ** 2
-                self.logger.error('!!![Collide wall]'+"reward={}".format(collision_static_reward)+ ",speed={}".format(speed))
+                self.logger.error(
+                    '!!![Collide wall]' + "reward={}".format(collision_static_reward) + ",speed={}".format(speed))
         # print("corresponding speed:", speed)
         # print("corresponding speed rw assume collission:", -speed ** 2)
-
-
-
-
 
         # # goal reward
         # goal_reward = 0
@@ -823,13 +835,10 @@ class SimpleCarlaEnv(BaseDriveEnv):
         # elif self._wrong_direction_is_failure and self._wrong_direction:
         #     failure_reward += self._failure_reward
         # add weight to failure reward
-        #failure_reward *= 50
+        # failure_reward *= 50
 
         # if self.is_failure():
-            # failure_reward = self._failure_reward
-
-
-
+        # failure_reward = self._failure_reward
 
         total_reward = 0
         # stage 1
@@ -850,7 +859,6 @@ class SimpleCarlaEnv(BaseDriveEnv):
             'lambda_wall': lambda_wall,
             'collision_dynamic_reward': collision_dynamic_reward,
         }
-
 
         # reward_info = {}
         # reward_info['goal_reward'] = goal_reward

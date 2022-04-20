@@ -26,7 +26,7 @@ class BehaviorPlanner(BasicPlanner):
     """
 
     config = dict(
-        min_distance=5.0,
+        min_distance=20.0,
         resolution=5.0,
         fps=10,
         debug=False,
