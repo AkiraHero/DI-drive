@@ -543,7 +543,7 @@ class PPORLModel(nn.Module):
             critic_head_layer_num: int = 1,
             activation: Optional[nn.Module] = nn.ReLU(),
             norm_type: Optional[str] = None,
-            sigma_type: Optional[str] = 'fixed',
+            sigma_type: Optional[str] = 'independent',
             bound_type: Optional[str] = 'tanh',
     ) -> None:
         super().__init__()
