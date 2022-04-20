@@ -10,13 +10,8 @@ ppo_config = dict(
         simulator=dict(
             town='Town01',
             spawn_manner="random",  # random, near
-            # spawn_pos_fix=[
-            #     (-29.6, -203.5, 2.5, 180),
-            #     (-18.6, -204.3, 2.5, 180),
-            #     (-43.4, -201.5, 5.5, 180),
-            #     (-57.4, -207.0, 7.5, 180),
-            #     (-197.7, -190.1, 10.5, 147)
-            # ],
+            spawn_pos_pool_dat="/home/akira/Project/Model_behaviour/DI-drive/noisy_planning/utils/town5_outter_loop.waypt",
+            spawn_pos_radius=20.0,
             delta_seconds=0.1,
             disable_two_wheels=True,
             verbose=False,
@@ -92,7 +87,7 @@ ppo_config = dict(
         reward_func="racing_reward",
         add_camera_vis_to_obs=True,
         #reward_type=['goal', 'distance', 'speed', 'angle', 'failure', 'lane'],
-        success_distance=2.0,
+        success_distance=15.0,
         success_reward=0,
         failure_reward=0,
         replay_path='./ppo_video',
@@ -126,8 +121,8 @@ ppo_config = dict(
             )
         ),
         wrapper=dict(
-            collect=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
-            eval=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
+            collect=dict(suite='race', suite_n_vehicles=100, suite_n_pedestrians=0, ),
+            eval=dict(suite='race', suite_n_vehicles=100, suite_n_pedestrians=0, ),
         ),
     ),
     server=[

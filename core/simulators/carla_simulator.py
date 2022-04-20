@@ -15,6 +15,7 @@ from core.simulators.carla_data_provider import CarlaDataProvider
 from core.utils.simulator_utils.carla_utils import control_to_signal, get_birdview
 from core.utils.planner import BasicPlanner, BehaviorPlanner, LBCPlannerNew
 from core.utils.others.tcp_helper import find_traffic_manager_port
+from core.utils.simulator_utils.spawn_points_pool import SpawnPointsPool
 
 import carla
 from carla import WeatherParameters
@@ -114,7 +115,8 @@ class CarlaSimulator(BaseSimulator):
         verbose=True,
         debug=False,
         spawn_manner="random",  # random, near
-        spawn_pos_fix=None
+        spawn_pos_pool_dat=None,
+        spawn_pos_radius=5.0,
     )
 
     def __init__(
@@ -178,11 +180,11 @@ class CarlaSimulator(BaseSimulator):
         self._camera_aug_cfg = self._cfg.aug
         self._verbose = self._cfg.verbose
         self._spawn_manner = self._cfg.spawn_manner
-        self._spawn_poses_fixed = self._cfg.spawn_pos_fix
-        print("!!!!!!!!!!!!!!", self._spawn_poses_fixed)
-
-
-
+        self._spawn_pos_pool_dat = self._cfg.spawn_pos_pool_dat
+        self._spawn_pos_radius = self._cfg.spawn_pos_radius
+        self._spawn_pos_pool = None
+        if self._spawn_pos_pool_dat:
+            self._spawn_pos_pool = SpawnPointsPool(self._spawn_pos_pool_dat)
         self._support_spawn_manner = ['random', 'near']
         assert self._spawn_manner in self._support_spawn_manner
 
@@ -208,11 +210,8 @@ class CarlaSimulator(BaseSimulator):
         self._start_spawn_point_inx = None
         self._end_spawn_point_inx = None
 
-
         self._actor_map = defaultdict(list)
         self._debug = self._cfg.debug
-
-
 
     def _apply_world_setting(self, **world_param) -> None:
         for k in world_param:
@@ -262,8 +261,11 @@ class CarlaSimulator(BaseSimulator):
 
             self._spawn_hero_vehicle(start_pos=start)
             self._prepare_observations()
-            if self._spawn_poses_fixed is not None:
-                self._spawn_vehicles_fixed(self._spawn_poses_fixed, dynamic=False)
+            if self._spawn_pos_pool is not None:
+                pos_list = self._spawn_pos_pool.select_points(num=self._n_vehicles, radiu=self._spawn_pos_radius)
+                valid_num = self._spawn_vehicles_fixed(pos_list, dynamic=False)
+                self.logger.error("[Spawn Vehicles]static radius={:.2f}, fix_num={}, try_num={}, suc_num={}"
+                                  .format(self._spawn_pos_radius, self._n_vehicles, len(pos_list), valid_num))
             else:
                 self._spawn_vehicles()
             self._spawn_pedestrians()
@@ -301,7 +303,7 @@ class CarlaSimulator(BaseSimulator):
             settings.fixed_delta_seconds = delta_seconds
             settings.no_rendering_mode = self._no_rendering
             self._world.apply_settings(settings)
-            #self._tm.set_synchronous_mode(True)
+            # self._tm.set_synchronous_mode(True)
 
     def _set_weather(self, weather_string):
         if self._verbose:
@@ -317,7 +319,8 @@ class CarlaSimulator(BaseSimulator):
     def _spawn_hero_vehicle(self, start_pos: int = 0) -> None:
         start_waypoint = CarlaDataProvider.get_spawn_point(start_pos)
         self._start_location = start_waypoint.location
-        self._hero_actor = CarlaDataProvider.request_new_actor(VEHICLE_NAME, start_waypoint, ROLE_NAME, add_random_factor=True)
+        self._hero_actor = CarlaDataProvider.request_new_actor(VEHICLE_NAME, start_waypoint, ROLE_NAME,
+                                                               add_random_factor=True)
 
     def _sort_spawn_point(self, points: list, st_pt_inx, ed_pt_inx=None):
         # use Manhattan distance (to do use planner distance, which can be calculated and saved before
@@ -326,31 +329,25 @@ class CarlaSimulator(BaseSimulator):
         ed_loc = None
         if ed_pt_inx:
             ed_loc = CarlaDataProvider.get_spawn_point(ed_pt_inx).location
-            sort_func = lambda pt: abs(pt.location.x - st_loc.x) + abs(pt.location.y - st_loc.y)\
+            sort_func = lambda pt: abs(pt.location.x - st_loc.x) + abs(pt.location.y - st_loc.y) \
                                    + abs(pt.location.x - ed_loc.x) + abs(pt.location.y - ed_loc.y)
 
         points.sort(key=sort_func)
         pass
         # todo: if crowded, add random swap
 
-    def _load_spw_pos(self):
-        pos_list = []
-        with open(self._spawn_poses_fixed, 'r') as f:
-            dynamic = f.readline().strip('\n')
-            lines = f.readlines()
-            for i in lines:
-                pose = [float(num) for num in i.strip('\n').split(' ')]
-                pos_list.append(pose)
-            if dynamic == "dynamic":
-                dynamic = True
-            elif dynamic == 'static':
-                dynamic = False
-            else:
-                raise NotImplementedError
-            return dynamic, pos_list
+    def _spawn_vehicles_fixed(self, poses, dynamic=False, add_rand=False) -> int:
+        # filter the pose too close to hero vehicle
+        protected_distance = 20.0
+        hero_location = CarlaDataProvider.get_location(CarlaDataProvider.get_hero_actor())
+        filtered_poses = []
+        for i in poses:
+            dx = i[0] - hero_location.x
+            dy = i[1] - hero_location.y
+            if (dx ** 2 + dy ** 2) ** 0.5 > protected_distance:
+                filtered_poses.append(i)
+        poses = filtered_poses
 
-
-    def _spawn_vehicles_fixed(self, poses, dynamic=False, num=1) -> None:
         blueprints = self._blueprints.filter('vehicle.*')
         if self._disable_two_wheels:
             blueprints = [x for x in blueprints if int(x.get_attribute('number_of_wheels')) == 4]
@@ -358,20 +355,23 @@ class CarlaSimulator(BaseSimulator):
         SpawnActor = carla.command.SpawnActor
         SetAutopilot = carla.command.SetAutopilot
         FutureActor = carla.command.FutureActor
+        ApplyControl = carla.command.ApplyVehicleControl
+        hand_brake_control = carla.VehicleControl()
+        hand_brake_control.hand_brake = True
 
         batch = []
-        if num > len(poses):
-            num = len(poses)
-        poses_inx = np.random.choice([i for i in range(len(poses))], num)
-        poses = [poses[i] for i in poses_inx]
         for n, transform in enumerate(poses):
-            random_factor_x = np.random.rand() % 0.4 - 0.2 # +-0.2m
-            random_factor_y = np.random.rand() % 0.4 - 0.2
-            random_factor_yaw = np.random.randint(30) - 15 # +-15 deg
+            random_factor_x = 0.
+            random_factor_y = 0.
+            random_factor_yaw = 0.
+            if add_rand:
+                random_factor_x = np.random.rand() % 0.4 - 0.2  # +-0.2m
+                random_factor_y = np.random.rand() % 0.4 - 0.2
+                random_factor_yaw = np.random.randint(30) - 15  # +-15 deg
             _spawn_point = carla.Transform(carla.Location(), carla.Rotation())
             _spawn_point.location.x = transform[0] + random_factor_x
             _spawn_point.location.y = transform[1] + random_factor_y
-            _spawn_point.location.z = transform[2]
+            _spawn_point.location.z = transform[2] + 0.5  # avoid collision
             _spawn_point.rotation.yaw = transform[3] + random_factor_yaw
 
             blueprint = random.choice(blueprints)
@@ -385,18 +385,21 @@ class CarlaSimulator(BaseSimulator):
             # spawn the cars and set their autopilot and light state all together
             if dynamic:
                 blueprint.set_attribute('role_name', 'autopilot')
-                batch.append(SpawnActor(blueprint, _spawn_point).then(SetAutopilot(FutureActor, True, self._tm.get_port())))
+                batch.append(
+                    SpawnActor(blueprint, _spawn_point).then(SetAutopilot(FutureActor, True, self._tm.get_port())))
             else:
                 blueprint.set_attribute('role_name', 'static')
-                batch.append(SpawnActor(blueprint, _spawn_point))
-
+                batch.append(SpawnActor(blueprint, _spawn_point).then(ApplyControl(FutureActor, hand_brake_control)))
+        valid_cnt = 0
         for response in self._client.apply_batch_sync(batch, True):
             if response.error:
                 if self._verbose:
                     self.logger.error('[SIMULATOR]' + str(response.error))
             else:
-                CarlaDataProvider.register_actor(self._world.get_actor(response.actor_id))
-
+                actor = self._world.get_actor(response.actor_id)
+                CarlaDataProvider.register_actor(actor)
+                valid_cnt += 1
+        return valid_cnt
 
     def _spawn_vehicles(self) -> None:
         blueprints = self._blueprints.filter('vehicle.*')
@@ -495,9 +498,7 @@ class CarlaSimulator(BaseSimulator):
                     _walker_speed.append(0.0)
                 batch.append(SpawnActor(walker_bp, spawn_point))
 
-
             results = self._client.apply_batch_sync(batch, True)
-
 
             _walker_speed2 = []
             for i in range(len(results)):
@@ -510,7 +511,6 @@ class CarlaSimulator(BaseSimulator):
                     _walker_speed2.append(_walker_speed[i])
             _walker_speed = _walker_speed2
 
-
             # 3. spawn the walker controller
             walker_controller_bp = self._blueprints.find('controller.ai.walker')
             batch = [SpawnActor(walker_controller_bp, carla.Transform(), walker) for walker in _walkers]
@@ -522,21 +522,16 @@ class CarlaSimulator(BaseSimulator):
                 else:
                     _controllers.append(result.actor_id)
 
-
             # 4. add peds and controllers into actor dict
             controllers.extend(_controllers)
             walkers.extend(_walkers)
             walker_speed.extend(_walker_speed)
 
-
-
         CarlaDataProvider.register_actors(self._world.get_actors(walkers))
         # CarlaDataProvider.register_actors(self._world.get_actors(controllers))
 
-
         # wait for a tick to ensure client receives the last transform of the walkers we have just created
         self._world.tick()
-
 
         # 5. initialize each controller and set target to walk to (list is [controller, actor, controller, actor ...])
         # set how many pedestrians can cross the road
@@ -544,18 +539,16 @@ class CarlaSimulator(BaseSimulator):
 
         for i, controller_id in enumerate(controllers):
             controller = self._world.get_actor(controller_id)
-            #controller = CarlaDataProvider.get_actor_by_id(controller_id)
+            # controller = CarlaDataProvider.get_actor_by_id(controller_id)
             controller.start()
             controller.go_to_location(self._world.get_random_location_from_navigation())
             controller.set_max_speed(float(walker_speed[i]))
             self._actor_map['walker_controller'].append(controller)
 
-
         # example of how to use parameters
         self._tm.global_percentage_speed_difference(30.0)
 
         self._world.tick()
-
 
     def _prepare_observations(self) -> None:
         self._sensor_helper = SensorHelper(self._obs_cfg, self._camera_aug_cfg)
@@ -623,8 +616,7 @@ class CarlaSimulator(BaseSimulator):
         out_string = beginning + vehicle_info + sensor_info + controller_info + walker_info + others_info + ending
         self.logger.debug(out_string)
         # for veh in vehicles:
-            # print('\t', veh[0].id, veh[0].type_id, veh[0].attributes['role_name'])
-
+        # print('\t', veh[0].id, veh[0].type_id, veh[0].attributes['role_name'])
 
     def apply_planner(self, end_idx: int) -> Dict:
         """
@@ -677,8 +669,6 @@ class CarlaSimulator(BaseSimulator):
         lane_location = lane_waypoint.transform.location
         lane_forward_vector = lane_waypoint.transform.rotation.get_forward_vector()
 
-
-
         v_forward = velocity.x * forward_vector.x + velocity.y * forward_vector.y + velocity.z * forward_vector.z
         v_up = velocity.x * up_vector.x + velocity.y * up_vector.y + velocity.z * up_vector.z
         v_right = velocity.x * right_vector.x + velocity.y * right_vector.y + velocity.z * right_vector.z
@@ -726,7 +716,7 @@ class CarlaSimulator(BaseSimulator):
             elif obs_item.type == 'bev':
                 key = obs_item.name
                 sensor_data.update({key: get_birdview(self._bev_wrapper.get_bev_data())})
-                #sensor_data.update({key + "_initial_dict": self._bev_wrapper.get_bev_data()})
+                # sensor_data.update({key + "_initial_dict": self._bev_wrapper.get_bev_data()})
         return sensor_data
 
     def get_information(self) -> Dict:
@@ -789,7 +779,8 @@ class CarlaSimulator(BaseSimulator):
         nearest_waypoint = hero_route[nearest_inx]
         nearest_waypoint = nearest_waypoint[0].transform
         nearest_waypoint_forward = nearest_waypoint.rotation.get_forward_vector()
-        nearest_waypoint = [nearest_waypoint.location.x, nearest_waypoint.location.y, nearest_waypoint.location.z, nearest_waypoint.rotation.yaw]
+        nearest_waypoint = [nearest_waypoint.location.x, nearest_waypoint.location.y, nearest_waypoint.location.z,
+                            nearest_waypoint.rotation.yaw]
         our_waypoint_list = []
         for i in range(self._waypoint_num):
             cur_inx = nearest_inx + i
@@ -805,8 +796,6 @@ class CarlaSimulator(BaseSimulator):
         #     print(i.transform.location.x, i.transform.location.y, i.transform.location.z, i.transform.rotation.yaw)
         # print("==========nearest========")
         # print(nearest_waypoint)
-
-        
 
         waypoint_location_list = []
         for wp in our_waypoint_list:
@@ -836,7 +825,6 @@ class CarlaSimulator(BaseSimulator):
         while len(waypoint_curvature_list) < self._waypoint_num:
             waypoint_curvature_list.append(0.0)
 
-
         # print("============way curvature================")
         # print(waypoint_curvature_list)
 
@@ -864,7 +852,8 @@ class CarlaSimulator(BaseSimulator):
             'command': command.value,
             'node': np.array([node_location.x, node_location.y]),
             'node_forward': np.array([node_forward.x, node_forward.y, node_forward.z]),
-            'nearest_waypoint_forward': np.array([nearest_waypoint_forward.x, nearest_waypoint_forward.y, nearest_waypoint_forward.z]),
+            'nearest_waypoint_forward': np.array(
+                [nearest_waypoint_forward.x, nearest_waypoint_forward.y, nearest_waypoint_forward.z]),
             'node_yaw': np.array(self._planner.node_waypoint.transform.rotation.yaw),
             'target': np.array([target_location.x, target_location.y, target_location.z]),
             'target_forward': np.array([target_forward.x, target_forward.y, target_forward.z]),
@@ -916,13 +905,12 @@ class CarlaSimulator(BaseSimulator):
             control_signal = control_to_signal(control)
             self._hero_actor.apply_control(control_signal)
 
-
     def clean_all_manual_actors(self):
         detroy_command = carla.command.DestroyActor
         not_success = True
         try_destroy_cnt = 0
         while not_success and try_destroy_cnt < 2:
-            actors =  self._world.get_actors()
+            actors = self._world.get_actors()
             actor_list = [i for i in actors]
             vehicles = []
             walkers = []
@@ -953,9 +941,6 @@ class CarlaSimulator(BaseSimulator):
                 self.logger.debug("[SIMULATOR] fail to clean all actors.")
             not_success = cur_loop_fail_flag
             try_destroy_cnt += 1
-
-        
-
 
     def clean_up(self) -> None:
         """
@@ -990,7 +975,7 @@ class CarlaSimulator(BaseSimulator):
         if self._debug:
             self.logger.debug("After CarlaDataProvider.clean_up()")
             self._count_actors()
-            
+
         # clear all object
         self.clean_all_manual_actors()
 
