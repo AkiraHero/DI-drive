@@ -758,10 +758,16 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 collision_dynamic_reward = -speed ** 2
                 self.logger.error(
                     '!!![Collide man]' + "reward={}".format(collision_dynamic_reward) + ",speed={}".format(speed))
-            else:
-                collision_static_reward = -speed ** 2
-                self.logger.error(
-                    '!!![Collide wall]' + "reward={}".format(collision_static_reward) + ",speed={}".format(speed))
+            # else:
+            #     collision_static_reward = -speed ** 2
+            #     self.logger.error(
+            #         '!!![Collide wall]' + "reward={}".format(collision_static_reward) + ",speed={}".format(speed))
+
+        if self._collide_solid_lane:
+            collision_static_reward = -speed ** 2
+            self.logger.error(
+                '!!![Collide wall(lane)]' + "reward={}".format(collision_static_reward) + ",speed={}".format(speed))
+
         # print("corresponding speed:", speed)
         # print("corresponding speed rw assume collission:", -speed ** 2)
 

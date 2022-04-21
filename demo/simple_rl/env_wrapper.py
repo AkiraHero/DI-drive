@@ -96,6 +96,11 @@ def get_obs_out(obs):
     # print('waypoint_curvature', obs['waypoint_curvature'])
 
     laser_obs = process_line_lidar(obs['linelidar'])
+
+    lane_dis_obs = np.concatenate([obs['most_left_lanemarker_dis'], obs['most_right_lanemarker_dis']])
+
+
+
     obs_out = {
         # 'birdview': obs['birdview'][..., [0, 1, 5, 6, 8, 7]],
         # 'speed': (obs['speed'] / 25).astype(np.float32),
@@ -105,9 +110,11 @@ def get_obs_out(obs):
         'heading_diff': np.array(obs['heading_diff'] / 60.0).reshape(-1, 1),
         'last_steer': np.array(np.clip(obs['last_steer'], -1.0, 1.0)).reshape(-1, 1),
         'collide_wall': np.array(obs['collide_wall']).reshape(-1, 1),
+        'collide_solid_lane': np.array(obs['collide_solid_lane']).reshape(-1, 1),
         'collide_obj': np.array(obs['collide_obj']).reshape(-1, 1),
         'way_curvature': np.array(obs['waypoint_curvature'] / 10.0).reshape(-1, 1),
         'laser_obs': laser_obs / 20.0,
+        'lane_dis_obs': (lane_dis_obs / 40.0).reshape(-1, 1),
         # 'bev_obj': obs['birdview'][..., 5:6] + obs['birdview'][..., 6:7],
         # 'bev_road': obs['birdview'][..., 0:1] + obs['birdview'][..., 1:2],
 

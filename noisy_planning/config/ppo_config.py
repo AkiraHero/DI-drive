@@ -122,8 +122,8 @@ ppo_config = dict(
             )
         ),
         wrapper=dict(
-            collect=dict(suite='race', suite_n_vehicles=100, suite_n_pedestrians=0, ),
-            eval=dict(suite='race', suite_n_vehicles=100, suite_n_pedestrians=0, ),
+            collect=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
+            eval=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
         ),
     ),
     server=[

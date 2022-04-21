@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from typing import Dict, Optional, Tuple, List, Union
@@ -29,7 +30,7 @@ class BEVVehicleStateEncoder(nn.Module):
         self.state_model = self.get_linear_encoder()
 
     def get_linear_encoder(self):
-        l1 = nn.Linear(42 + 181, 256)
+        l1 = nn.Linear(287, 256)
         l2 = nn.Linear(256, 256)
         l3 = nn.Linear(256, 128)
         layers = [l1, self._relu, l2, self._relu, l3, self._relu]
@@ -67,6 +68,12 @@ class BEVVehicleStateEncoder(nn.Module):
         collide_obj = data['collide_obj']
         way_curvature = data['way_curvature']
         laser_beam = data['laser_obs']
+        lane_dis_obs = data['lane_dis_obs']
+        collide_solid_lane = data['collide_solid_lane']
+
+        # place holder
+        obstacle_data = torch.zeros_like(laser_beam, device=laser_beam.device)
+
         if 2 == len(velocity_local.shape):  # fill batch_size dim
             velocity_local = velocity_local.unsqueeze(0)
             acceleration_local = acceleration_local.unsqueeze(0)
@@ -76,14 +83,19 @@ class BEVVehicleStateEncoder(nn.Module):
             collide_obj = collide_obj.unsqueeze(0)
             way_curvature = way_curvature.unsqueeze(0)
             laser_beam = laser_beam.unsqueeze(0)
+            lane_dis_obs = lane_dis_obs.unsqueeze(0)
+            collide_solid_lane = collide_solid_lane.unsqueeze(0)
+            obstacle_data = obstacle_data.unsqueeze(0)
         state_vec = torch.cat([velocity_local,
                                acceleration_local,
                                heading_diff,
                                last_steer,
-                               collide_wall,
+                               collide_solid_lane,
                                collide_obj,
                                way_curvature,
-                               laser_beam], dim=1).squeeze(-1) # dim: bs, colume vector
+                               lane_dis_obs,
+                               obstacle_data,
+                               ], dim=1).squeeze(-1) # dim: bs, colume vector
         state_embedding = self.state_model(state_vec)
         return state_embedding
 
