@@ -57,6 +57,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         off_road_is_failure=False,
         wrong_direction_is_failure=False,
         off_route_is_failure=False,
+        col_solid_lane_is_failure=False,
         # failure judgement hyper-parameters
         off_route_distance=6,
         success_distance=5,
@@ -104,6 +105,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
             self._use_local_carla = True
         self._simulator = None
 
+        self._col_solid_lane_is_failure = self._cfg.col_solid_lane_is_failure
         self._col_is_failure = self._cfg.col_is_failure
         self._stuck_is_failure = self._cfg.stuck_is_failure
         self._ignore_light = self._cfg.ignore_light
@@ -121,6 +123,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         self._max_speed = self._cfg.max_speed
         self._collided = False
         self._collided_info = None
+        self._collide_solid_lane = False
         self._stuck = False
         self._ran_light = False
         self._off_road = False
@@ -218,6 +221,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
             self._suite_name = kwargs['suite_name']
         self._simulator_databuffer.clear()
         self._collided = False
+        self._collide_solid_lane = False
         self._stuck = False
         self._ran_light = False
         self._off_road = False
@@ -271,6 +275,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         # self.logger.error("start to perform step... after simu runstep, tick=".format(self._tick))
 
         obs = self.get_observations()
+        self._collide_solid_lane = self._simulator.collide_solid_lane
         self._collided = self._simulator.collided
         self._collided_info = self._simulator.collided_info
         self._stuck = self._stuck_detector.stuck
@@ -287,6 +292,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
         info.update({'reward_info': reward_info})
         info.update(
             {
+                'collide_solid_lane': self._collide_solid_lane,
                 'collided': self._collided,
                 'stuck': self._stuck,
                 'ran_light': self._ran_light,
@@ -344,6 +350,8 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 'end_timeout': self._simulator.end_timeout,
                 'end_distance': self._simulator.end_distance,
                 'total_distance': self._simulator.total_distance,
+                'most_left_lanemarker_dis': obs['most_left_lanemarker_dis'][0],
+                'most_right_lanemarker_dis': obs['most_right_lanemarker_dis'][0],
             }
         })
 
@@ -394,6 +402,9 @@ class SimpleCarlaEnv(BaseDriveEnv):
             return True
         if self._col_is_failure and self._collided:
             self._failure_reason = 'collided'
+            return True
+        if self._col_solid_lane_is_failure and self._collide_solid_lane:
+            self._failure_reason = 'collide_solid_lane'
             return True
         if self._ran_light_is_failure and self._ran_light:
             self._failure_reason = 'ran_light'
@@ -483,6 +494,9 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 'heading_diff': np.float32(heading_diff),
                 'collide_wall': np.float32(collide_with_wall),
                 'collide_obj': np.float32(collide_with_obj),
+                'collide_solid_lane': np.float32(self._collide_solid_lane),
+                'most_left_lanemarker_dis': np.float32(navigation['most_left_lanemarker_dis']),
+                'most_right_lanemarker_dis': np.float32(navigation['most_right_lanemarker_dis']),
                 'waypoint_curvature': np.float32(navigation['waypoint_curvature']),
                 'last_steer': self._last_steer_obs,
 

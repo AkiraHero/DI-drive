@@ -356,6 +356,45 @@ class CollisionSensor(object):
             self.sensor.destroy()
 
 
+class LaneInvasionSensor(object):
+    """Class for lane invasion sensors"""
+
+    def __init__(self, parent_actor):
+        """Constructor method"""
+        self.sensor = None
+        self._parent = parent_actor
+        world = self._parent.get_world()
+        bp = world.get_blueprint_library().find('sensor.other.lane_invasion')
+        self.sensor = world.spawn_actor(bp, carla.Transform(), attach_to=self._parent)
+        # We need to pass the lambda a weak reference to self to avoid circular
+        # reference.
+        weak_self = weakref.ref(self)
+        self.sensor.listen(lambda event: LaneInvasionSensor._on_invasion(weak_self, event))
+        self.collide_solid_line = False
+
+    @staticmethod
+    def _on_invasion(weak_self, event):
+        """On invasion method"""
+        self = weak_self()
+        if not self:
+            return
+        lane_types = set(x.type for x in event.crossed_lane_markings)
+        lane_changes = set(x.lane_change for x in event.crossed_lane_markings)
+        text = ['%r' % str(x).split()[-1] for x in lane_types]
+        for i in lane_changes:
+            if i == carla.LaneChange.NONE:
+                self.collide_solid_line = True
+                break
+
+
+    def destroy(self):
+        if self.sensor.is_alive:
+            self.sensor.destroy()
+
+    def clear(self) -> None:
+        if self.sensor.is_alive:
+            self.sensor.destroy()
+
 class TrafficLightHelper(object):
     """
     Interface of traffic light detector and recorder. It detects next traffic light state,

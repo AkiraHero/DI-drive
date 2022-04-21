@@ -78,6 +78,7 @@ ppo_config = dict(
         col_is_failure=True,
         stuck_is_failure=True,
         ignore_light=True,
+        col_solid_lane_is_failure=True,
         ran_light_is_failure=False,
         off_road_is_failure=False,
         wrong_direction_is_failure=False,
@@ -148,7 +149,7 @@ ppo_config = dict(
             learner=dict(
                 hook=dict(
                     log_show_after_iter=1000,
-                    # load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-tanh-2022-04-18-09-37-08/ckpt/iteration_18000.pth.tar',
+                    # load_ckpt_before_run='/home/akira/Downloads/iteration_162000.pth.tar',
                     save_ckpt_after_iter=3000,
                 ),
             ),

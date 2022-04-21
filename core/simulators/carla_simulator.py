@@ -9,13 +9,14 @@ from typing import Optional, Dict
 from collections import defaultdict
 
 from .base_simulator import BaseSimulator
-from core.utils.simulator_utils.sensor_utils import SensorHelper, CollisionSensor, TrafficLightHelper
+from core.utils.simulator_utils.sensor_utils import SensorHelper, CollisionSensor, TrafficLightHelper, LaneInvasionSensor
 from core.utils.simulator_utils.map_utils import BeVWrapper
 from core.simulators.carla_data_provider import CarlaDataProvider
 from core.utils.simulator_utils.carla_utils import control_to_signal, get_birdview
 from core.utils.planner import BasicPlanner, BehaviorPlanner, LBCPlannerNew
 from core.utils.others.tcp_helper import find_traffic_manager_port
 from core.utils.simulator_utils.spawn_points_pool import SpawnPointsPool
+from core.utils.simulator_utils.carla_utils import get_lane_marker_dis
 
 import carla
 from carla import WeatherParameters
@@ -193,6 +194,7 @@ class CarlaSimulator(BaseSimulator):
         self._end_location = None
         self._collided = False
         self._collided_info = None
+        self._collide_solid_lane = False
         self._ran_light = False
         self._off_road = False
         self._wrong_direction = False
@@ -205,6 +207,7 @@ class CarlaSimulator(BaseSimulator):
         self._bev_wrapper = None
         self._planner = None
         self._collision_sensor = None
+        self._lane_invasion_sensor = None
         self._traffic_light_helper = None
 
         self._start_spawn_point_inx = None
@@ -563,6 +566,7 @@ class CarlaSimulator(BaseSimulator):
         planner_cls = PLANNER_DICT[self._planner_cfg.get('type', 'basic')]
         self._planner = planner_cls(self._planner_cfg)
         self._collision_sensor = CollisionSensor(self._hero_actor, self._col_threshold)
+        self._lane_invasion_sensor = LaneInvasionSensor(self._hero_actor)
         self._traffic_light_helper = TrafficLightHelper(self._hero_actor)
 
     def _ready(self, ticks: int = 30) -> bool:
@@ -786,6 +790,8 @@ class CarlaSimulator(BaseSimulator):
             cur_inx = nearest_inx + i
             if cur_inx < len(hero_route):
                 our_waypoint_list.append(hero_route[cur_inx][0])
+
+        most_left_lanemarker_dis, most_right_lanemarker_dis = get_lane_marker_dis(our_waypoint_list, hero_x, hero_y)
         # for visualize
         if self._bev_wrapper is not None:
             self._bev_wrapper.update_waypoints(our_waypoint_list)
@@ -859,6 +865,8 @@ class CarlaSimulator(BaseSimulator):
             'target_forward': np.array([target_forward.x, target_forward.y, target_forward.z]),
             'waypoint_list': np.array(waypoint_location_list),
             'waypoint_curvature': np.array(waypoint_curvature_list),
+            'most_left_lanemarker_dis': np.array(most_left_lanemarker_dis),
+            'most_right_lanemarker_dis': np.array(most_right_lanemarker_dis),
             'speed_limit': np.array(speed_limit),
             'direction_list': np.array(direction_list),
             'nearest_waypoint': np.array(nearest_waypoint)
@@ -879,6 +887,8 @@ class CarlaSimulator(BaseSimulator):
 
         if self._planner is not None:
             self._planner.run_step()
+
+        self._collide_solid_lane = self._lane_invasion_sensor.collide_solid_line
 
         self._collided = self._collision_sensor.collided
         if self._collided:
@@ -951,6 +961,8 @@ class CarlaSimulator(BaseSimulator):
             self._sensor_helper.clean_up()
         if self._collision_sensor is not None:
             self._collision_sensor.clear()
+        if self._lane_invasion_sensor is not None:
+            self._lane_invasion_sensor.clear()
 
         for actor in self._actor_map['walker_controller']:
             if actor.is_alive:
@@ -966,6 +978,7 @@ class CarlaSimulator(BaseSimulator):
         self._tick = 0
         self._timestamp = 0
         self._collided = False
+        self._collide_solid_lane = False
         self._ran_light = False
         self._off_road = False
         self._wrong_direction = False
@@ -990,6 +1003,10 @@ class CarlaSimulator(BaseSimulator):
     @property
     def collided(self) -> bool:
         return self._collided
+
+    @property
+    def collide_solid_lane(self) -> bool:
+        return self._collide_solid_lane
 
     @property
     def collided_info(self) -> tuple:

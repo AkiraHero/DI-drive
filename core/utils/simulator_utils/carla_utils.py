@@ -154,4 +154,43 @@ def get_lane_dis(waypoints, x, y):
   return dis, w
 
 
+def lateral_shift(transform, shift):
+    """Makes a lateral shift of the forward vector of a transform"""
+    transform.rotation.yaw += 90
+    return transform.location + shift * transform.get_forward_vector()
+
+
+def get_lane_marker_dis(way_points, x, y):
+    """
+    Args:
+        way_points: the front waypoints on the route
+        x:  current location.x
+        y: current location.y
+
+    Returns:
+        most_left_lanemarker_dis, most_right_lanemarker_dis
+    """
+    most_left_lanemarker_loc = []
+    most_right_lanemarker_loc = []
+    for cur_way_point in way_points:
+        most_left_lane = cur_way_point
+        most_right_lane = cur_way_point
+
+        # get left
+        while most_left_lane.lane_change == carla.LaneChange.Both or most_left_lane.lane_change == carla.LaneChange.Left:
+            most_left_lane = most_left_lane.get_left_lane()
+
+        # get right
+        while most_right_lane.lane_change == carla.LaneChange.Both or most_right_lane.lane_change == carla.LaneChange.Right:
+            most_right_lane = most_right_lane.get_right_lane()
+
+        road_left_side = lateral_shift(most_left_lane.transform, -most_left_lane.lane_width * 0.5)
+        road_right_side = lateral_shift(most_right_lane.transform, most_right_lane.lane_width * 0.5)
+        most_left_lanemarker_loc.append(road_left_side)
+        most_right_lanemarker_loc.append(road_right_side)
+    most_left_lanemarker_dis = [((i.x - x) ** 2 + (i.y - y) ** 2) ** 0.5 for i in most_left_lanemarker_loc]
+    most_right_lanemarker_dis = [((i.x - x) ** 2 + (i.y - y) ** 2) ** 0.5 for i in most_right_lanemarker_loc]
+    return most_left_lanemarker_dis, most_right_lanemarker_dis
+
+
 
