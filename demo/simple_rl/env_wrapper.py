@@ -98,7 +98,7 @@ def get_obs_out(obs):
     laser_obs = process_line_lidar(obs['linelidar'])
 
     lane_dis_obs = np.concatenate([obs['most_left_lanemarker_dis'], obs['most_right_lanemarker_dis']])
-
+    neibor_boxes = obs['neibor_boxes']
 
 
     obs_out = {
@@ -115,6 +115,7 @@ def get_obs_out(obs):
         'way_curvature': np.array(obs['waypoint_curvature'] / 10.0).reshape(-1, 1),
         'laser_obs': laser_obs / 20.0,
         'lane_dis_obs': (lane_dis_obs / 40.0).reshape(-1, 1),
+        'neibor_boxes': (neibor_boxes / 30.0).reshape(-1, 1),
         # 'bev_obj': obs['birdview'][..., 5:6] + obs['birdview'][..., 6:7],
         # 'bev_road': obs['birdview'][..., 0:1] + obs['birdview'][..., 1:2],
 

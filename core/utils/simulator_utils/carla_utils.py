@@ -193,4 +193,48 @@ def get_lane_marker_dis(way_points, x, y):
     return most_left_lanemarker_dis, most_right_lanemarker_dis
 
 
+def get_neibor_obj_bev_box(actors_with_transforms, hero_x, hero_y, hero_id, range_scope=30.0):
+    # actors = world.get_actors()
+    # actors_with_transforms = [(actor, actor.get_transform()) for actor in actors]
+    vehicles = []
+    traffic_lights = []
+    walkers = []
+
+    for actor_with_transform in actors_with_transforms:
+        actor = actor_with_transform[0]
+        if actor.id == hero_id:
+            continue
+        if 'vehicle' in actor.type_id:
+            vehicles.append(actor_with_transform)
+        elif 'traffic_light' in actor.type_id:
+            traffic_lights.append(actor_with_transform)
+        elif 'walker' in actor.type_id:
+            walkers.append(actor_with_transform)
+    valid_relative_corners = []
+    for v in vehicles:
+        # Compute bounding box points under global coordinate
+        bb = v[0].bounding_box.extent
+        corners = [
+            carla.Location(x=-bb.x, y=-bb.y),
+            carla.Location(x=-bb.x, y=bb.y),
+            carla.Location(x=bb.x, y=bb.y),
+            carla.Location(x=bb.x, y=-bb.y)
+        ]
+        v[1].transform(corners)
+        # get any kind of relative position is ok
+        in_range = False
+        relative_corners = []
+        for i in corners:
+            dx, dy = i.x - hero_x, i.y - hero_y
+            if (dy ** 2 + dx ** 2) < range_scope:
+                in_range = True
+            relative_corners += [dx, dy]
+        if in_range:
+            assert len(relative_corners) == 8
+            valid_relative_corners += relative_corners
+    return valid_relative_corners
+
+
+
+
 

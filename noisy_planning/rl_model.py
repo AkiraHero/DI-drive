@@ -73,6 +73,7 @@ class BEVVehicleStateEncoder(nn.Module):
 
         # place holder
         obstacle_data = torch.zeros_like(laser_beam, device=laser_beam.device)
+        neibor_boxes = data['neibor_boxes']
 
         if 2 == len(velocity_local.shape):  # fill batch_size dim
             velocity_local = velocity_local.unsqueeze(0)
@@ -86,6 +87,11 @@ class BEVVehicleStateEncoder(nn.Module):
             lane_dis_obs = lane_dis_obs.unsqueeze(0)
             collide_solid_lane = collide_solid_lane.unsqueeze(0)
             obstacle_data = obstacle_data.unsqueeze(0)
+            neibor_boxes = neibor_boxes.unsqueeze(0)
+
+        valid_dim = min(obstacle_data.shape[1], neibor_boxes.shape[1])
+        obstacle_data[:, :valid_dim, :] = neibor_boxes[:, :valid_dim, :]
+
         state_vec = torch.cat([velocity_local,
                                acceleration_local,
                                heading_diff,
