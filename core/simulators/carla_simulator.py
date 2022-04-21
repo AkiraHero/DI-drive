@@ -852,7 +852,7 @@ class CarlaSimulator(BaseSimulator):
                 else:
                     # Changing to a lane with the same direction
                     self._wrong_direction = False
-        n_boxes = get_neibor_obj_bev_box(self._bev_wrapper.world_module.actors_with_transforms, hero_x,
+        n_boxes, n_boxes_num = get_neibor_obj_bev_box(self._bev_wrapper.world_module.actors_with_transforms, hero_x,
                                          hero_y, hero_actor.id, range_scope=30.0)
         navigation = {
             'agent_state': agent_state.value,
@@ -869,6 +869,7 @@ class CarlaSimulator(BaseSimulator):
             'most_left_lanemarker_dis': np.array(most_left_lanemarker_dis),
             'most_right_lanemarker_dis': np.array(most_right_lanemarker_dis),
             'neibor_boxes': np.array(n_boxes),
+            'neibor_boxes_num': n_boxes_num,
             'speed_limit': np.array(speed_limit),
             'direction_list': np.array(direction_list),
             'nearest_waypoint': np.array(nearest_waypoint)

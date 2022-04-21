@@ -352,7 +352,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 'total_distance': self._simulator.total_distance,
                 'most_left_lanemarker_dis': obs['most_left_lanemarker_dis'][0],
                 'most_right_lanemarker_dis': obs['most_right_lanemarker_dis'][0],
-                'obj_in_range': len(obs['neibor_boxes']) / 8,
+                'obj_in_range': obs['neibor_boxes_num'],
             }
         })
 
@@ -499,6 +499,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 'most_left_lanemarker_dis': np.float32(navigation['most_left_lanemarker_dis']),
                 'most_right_lanemarker_dis': np.float32(navigation['most_right_lanemarker_dis']),
                 'neibor_boxes': np.float32(navigation['neibor_boxes']),
+                'neibor_boxes_num': navigation['neibor_boxes_num'],
                 'waypoint_curvature': np.float32(navigation['waypoint_curvature']),
                 'last_steer': self._last_steer_obs,
 

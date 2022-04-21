@@ -194,8 +194,7 @@ def get_lane_marker_dis(way_points, x, y):
 
 
 def get_neibor_obj_bev_box(actors_with_transforms, hero_x, hero_y, hero_id, range_scope=30.0):
-    # actors = world.get_actors()
-    # actors_with_transforms = [(actor, actor.get_transform()) for actor in actors]
+    # output 20 obj
     vehicles = []
     traffic_lights = []
     walkers = []
@@ -211,6 +210,7 @@ def get_neibor_obj_bev_box(actors_with_transforms, hero_x, hero_y, hero_id, rang
         elif 'walker' in actor.type_id:
             walkers.append(actor_with_transform)
     valid_relative_corners = []
+    valid_num = 0
     for v in vehicles:
         # Compute bounding box points under global coordinate
         bb = v[0].bounding_box.extent
@@ -232,7 +232,13 @@ def get_neibor_obj_bev_box(actors_with_transforms, hero_x, hero_y, hero_id, rang
         if in_range:
             assert len(relative_corners) == 8
             valid_relative_corners += relative_corners
-    return valid_relative_corners
+            valid_num += 1
+    if valid_num < 20:
+        valid_relative_corners += [0] * (20 - valid_num) * 8
+    else:
+        valid_relative_corners = valid_relative_corners[:8 * 20]
+
+    return valid_relative_corners, valid_num
 
 
 
