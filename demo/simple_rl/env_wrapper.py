@@ -116,6 +116,8 @@ def get_obs_out(obs):
         'laser_obs': laser_obs / 20.0,
         'lane_dis_obs': (lane_dis_obs / 40.0).reshape(-1, 1),
         'neibor_boxes': (neibor_boxes / 30.0).reshape(-1, 1),
+        'nb_obj_feature': obs['nb_obj_feature'],  # have been normalized
+        'ego_obj_feature': obs['ego_obj_feature'],
         # 'bev_obj': obs['birdview'][..., 5:6] + obs['birdview'][..., 6:7],
         # 'bev_road': obs['birdview'][..., 0:1] + obs['birdview'][..., 1:2],
 
