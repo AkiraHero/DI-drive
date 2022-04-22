@@ -193,12 +193,12 @@ def get_lane_marker_dis(way_points, x, y):
     return most_left_lanemarker_dis, most_right_lanemarker_dis
 
 
-def get_neibor_obj_bev_box(actors_with_transforms, hero_x, hero_y, hero_id, range_scope=30.0):
+def get_neibor_obj_bev_box(actors_with_transforms, hero_x, hero_y, hero_yaw, hero_id, range_scope=30.0):
     # output 20 obj
     vehicles = []
     traffic_lights = []
     walkers = []
-
+    hero_yaw_rad = np.deg2rad(hero_yaw)
     for actor_with_transform in actors_with_transforms:
         actor = actor_with_transform[0]
         if actor.id == hero_id:
@@ -226,9 +226,12 @@ def get_neibor_obj_bev_box(actors_with_transforms, hero_x, hero_y, hero_id, rang
         relative_corners = []
         for i in corners:
             dx, dy = i.x - hero_x, i.y - hero_y
+            # trans by hero_yaw
+            dx_n = dx * np.cos(hero_yaw_rad) - dy * np.sin(hero_yaw_rad)
+            dy_n = dx * np.sin(hero_yaw_rad) + dy * np.cos(hero_yaw_rad)
             if (dy ** 2 + dx ** 2) < range_scope:
                 in_range = True
-            relative_corners += [dx, dy]
+            relative_corners += [dx_n, dy_n]
         if in_range:
             assert len(relative_corners) == 8
             valid_relative_corners += relative_corners

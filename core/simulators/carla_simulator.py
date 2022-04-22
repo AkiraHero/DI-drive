@@ -853,7 +853,7 @@ class CarlaSimulator(BaseSimulator):
                     # Changing to a lane with the same direction
                     self._wrong_direction = False
         n_boxes, n_boxes_num = get_neibor_obj_bev_box(self._bev_wrapper.world_module.actors_with_transforms, hero_x,
-                                         hero_y, hero_actor.id, range_scope=30.0)
+                                         hero_y, hero_yaw, hero_actor.id, range_scope=30.0)
         navigation = {
             'agent_state': agent_state.value,
             'command': command.value,

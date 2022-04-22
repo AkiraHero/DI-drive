@@ -273,6 +273,20 @@ class HUD(object):
                 self._reward_text[k] = "%s: % 7.2f" % (k, v)
             for k, v in otherobs['route_info'].items():
                 self._route_text[k] = "%s: % 7.2f" % (k, v)
+            n_box_num = otherobs['obs']['neibor_boxes_num']
+            n_box = otherobs['obs']['neibor_boxes'][: n_box_num * 8]
+            all_corners = np.split(n_box, 2)
+            nearest_corner = None
+            nearest_dis = 100000000
+            for c in all_corners:
+                dis = (c[0] ** 2 + c[1] ** 2) ** 0.5
+                if dis < nearest_dis:
+                    nearest_dis = dis
+                    nearest_corner = c
+            if nearest_corner:
+                self._route_text['nearest_corner'] = "%s: %3.2f, %3.2f" % ("nearest corner", nearest_corner[0], nearest_corner[1]) 
+
+            
 
 
 
