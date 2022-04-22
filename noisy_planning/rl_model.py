@@ -138,7 +138,8 @@ class BEVVehicleStateEncoder(nn.Module):
         # out vec
         scene_attd_descriptor = torch.bmm(attd, V_all)
 
-        final_descriptor = self.scene_attd_projector(scene_attd_descriptor).squeeze(1) + self.self_box_projector(ego_obj_feature)
+        final_descriptor = self.scene_attd_projector(scene_attd_descriptor) + self.self_box_projector(ego_obj_feature)
+
         obj_embedding = self.obj_embedding_projector(final_descriptor)
 
         obj_embedding = obj_embedding.permute(0, 2, 1)
