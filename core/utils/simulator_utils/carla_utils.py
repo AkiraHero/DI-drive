@@ -2,6 +2,7 @@
 Copyright 2021 OpenDILab. All Rights Reserved:
 Description:carla utils for DI-drive
 '''
+import logging
 
 import numpy as np
 import math
@@ -229,7 +230,7 @@ def get_neibor_obj_bev_box(actors_with_transforms, hero_x, hero_y, hero_yaw, her
             # trans by hero_yaw
             dx_n = dx * np.cos(hero_yaw_rad) - dy * np.sin(hero_yaw_rad)
             dy_n = dx * np.sin(hero_yaw_rad) + dy * np.cos(hero_yaw_rad)
-            if (dy ** 2 + dx ** 2) < range_scope:
+            if np.sqrt(dy ** 2 + dx ** 2) < range_scope:
                 in_range = True
             relative_corners += [dx_n, dy_n]
         if in_range:
