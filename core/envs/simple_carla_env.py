@@ -500,6 +500,8 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 'most_right_lanemarker_dis': np.float32(navigation['most_right_lanemarker_dis']),
                 'neibor_boxes': np.float32(navigation['neibor_boxes']),
                 'neibor_boxes_num': navigation['neibor_boxes_num'],
+                'nb_obj_feature': navigation['nb_obj_feature'],
+                'ego_obj_feature': navigation['ego_obj_feature'],
                 'waypoint_curvature': np.float32(navigation['waypoint_curvature']),
                 'last_steer': self._last_steer_obs,
 

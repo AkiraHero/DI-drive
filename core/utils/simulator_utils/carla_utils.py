@@ -246,5 +246,121 @@ def get_neibor_obj_bev_box(actors_with_transforms, hero_x, hero_y, hero_yaw, her
 
 
 
+def get_neibor_obj_feature(actors_with_transforms,  hero_id, range_scope=30.0):
+    def get_corner_nearest_dis(corners, hero_x, hero_y, hero_yaw_rad):
+        min_dist = np.inf
+        min_dist_inx = 0
+        front_ = False
+        for inx, i_ in enumerate(corners):
+            dx_, dy_ = i_.x - hero_x, i_.y - hero_y
+            dist = np.sqrt(dy_ ** 2 + dx_ ** 2)
+            if dist < min_dist:
+                min_dist = dist
+                min_dist_inx = inx
+        i_ = corners[min_dist_inx]
+        dx_, dy_ = i_.x - hero_x, i_.y - hero_y
+        dx_n_ = dx_ * np.cos(hero_yaw_rad) - dy_ * np.sin(hero_yaw_rad)
+        if dx_n_ > 0:
+            front_ = True
+        return min_dist, front_
+
+    max_obj = 8
+    feat_dim = 16
+
+    vehicles = []
+    traffic_lights = []
+    walkers = []
+
+    hero_transform = None
+    hero_bb = None
+    for actor_with_transform in actors_with_transforms:
+        actor = actor_with_transform[0]
+        if actor.id == hero_id:
+            hero_transform = actor_with_transform[1]
+            hero_bb = actor.bounding_box.extent
+            continue
+        if 'vehicle' in actor.type_id:
+            vehicles.append(actor_with_transform)
+        elif 'traffic_light' in actor.type_id:
+            traffic_lights.append(actor_with_transform)
+        elif 'walker' in actor.type_id:
+            walkers.append(actor_with_transform)
+
+    hero_x = hero_transform.location.x
+    hero_y = hero_transform.location.y
+    hero_yaw = hero_transform.rotation.yaw
+    hero_yaw_rad = np.deg2rad(hero_yaw)
+
+    dis_list = []
+    feat_list = []
+    for v in vehicles:
+        # Compute bounding box points under global coordinate
+        bb = v[0].bounding_box.extent
+        corners = [
+            carla.Location(x=-bb.x, y=-bb.y),
+            carla.Location(x=-bb.x, y=bb.y),
+            carla.Location(x=bb.x, y=bb.y),
+            carla.Location(x=bb.x, y=-bb.y)
+        ]
+        v[1].transform(corners)
+
+        # get any kind of relative position is ok
+        in_range = False
+        distance, front = get_corner_nearest_dis(corners, hero_x, hero_y, hero_yaw_rad)
+        if distance < range_scope and front:
+            in_range = True
+
+        if in_range:
+            dis_list.append(distance)
+            # feature1: relative corners: 8 dim normalized
+            relative_corners = []
+            for i in corners:
+                dx, dy = i.x - hero_x, i.y - hero_y
+                # trans by hero_yaw
+                dx_n = dx * np.cos(hero_yaw_rad) - dy * np.sin(hero_yaw_rad)
+                dy_n = dx * np.sin(hero_yaw_rad) + dy * np.cos(hero_yaw_rad)
+                relative_corners += [dx_n / range_scope, dy_n / range_scope] # rough normalize......
+
+
+            # feature2: relative yaw: 1 dim normalized
+            relative_yaw = v[1].rotation.yaw - hero_yaw
+            while relative_yaw < -180.0:
+                relative_yaw += 360.0
+            while relative_yaw > 180.0:
+                relative_yaw -= 360.0
+            relative_yaw /= 60.0  # rough normalize......
+
+            # feature3: validity
+            validity = 1.0
+
+            # placeholder
+            feat = np.zeros(feat_dim, dtype=np.float)
+            feat[:8] = np.array(relative_corners)
+            feat[8] = relative_yaw
+            feat[-1] = validity  # last dim
+            feat_list.append(feat)
+
+    valid_indices = np.argsort(dis_list)[:max_obj]
+    feat_list = np.array(feat_list).reshape(-1, feat_dim)
+    valid_feat = feat_list[valid_indices]
+    if len(valid_indices) < max_obj:
+        padding_num = max_obj - len(valid_indices)
+        padding = np.zeros([padding_num, feat_dim], dtype=np.float)
+        valid_feat = np.concatenate([valid_feat, padding], axis=0)
+
+    ego_feature = np.zeros([1, feat_dim], dtype=np.float)
+    ego_corner = []
+    ego_corner += [-hero_bb.x, -hero_bb.y]
+    ego_corner += [-hero_bb.x, hero_bb.y]
+    ego_corner += [hero_bb.x, hero_bb.y]
+    ego_corner += [hero_bb.x, -hero_bb.y]
+    ego_feature[0, :8] = np.array(ego_corner) / range_scope # rough normalize......
+    ego_feature[0, -1] = 1.0
+    return valid_feat, ego_feature
+
+
+
+
+
 
 
