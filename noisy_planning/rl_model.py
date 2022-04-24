@@ -30,49 +30,8 @@ class BEVVehicleStateEncoder(nn.Module):
         self.state_model = self.get_linear_encoder()
 
 
-        # attention modules for surrounding/front vehicles
-        self._scene_part_dim = 16  # box feature dimension
-        self._scene_feat_dim = 24
-        self._norm_f = 1. / (self._scene_feat_dim ** 0.5)
-
-        self._value_dim = 24
-        self._norm_f = 1. / (self._scene_feat_dim ** 0.5)
-
-
-        self.feature_preprocessor = nn.Sequential(
-            nn.Linear(self._scene_part_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, self._scene_part_dim),
-            nn.ReLU()
-        )
-
-        self.query_projector = nn.Linear(self._scene_part_dim, self._scene_feat_dim)
-        self.key_projector = nn.Linear(self._scene_part_dim, self._scene_feat_dim)
-        self.value_projector = nn.Linear(self._scene_part_dim, self._value_dim)
-
-        self.scene_attd_projector = nn.Sequential(
-            nn.Linear(self._scene_feat_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU()
-        )
-        self.self_box_projector = nn.Sequential(
-            nn.Linear(self._scene_part_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU()
-        )
-
-        self.obj_embedding_projector = nn.Sequential(
-            nn.Linear(64, 64),
-            nn.ReLU(),
-            nn.Linear(64, 64),
-        )
-
     def get_linear_encoder(self):
-        l1 = nn.Linear(170, 256)
+        l1 = nn.Linear(287, 256)
         l2 = nn.Linear(256, 256)
         l3 = nn.Linear(256, 128)
         layers = [l1, self._relu, l2, self._relu, l3, self._relu]
@@ -114,6 +73,7 @@ class BEVVehicleStateEncoder(nn.Module):
         collide_solid_lane = data['collide_solid_lane']
         nb_obj_feature = data['nb_obj_feature']
         ego_obj_feature = data['ego_obj_feature']
+        fake_laser_beam = data['fake_line_laser_ranges']
 
         # # place holder
         # obstacle_data = torch.zeros_like(laser_beam, device=laser_beam.device)
@@ -134,33 +94,9 @@ class BEVVehicleStateEncoder(nn.Module):
             # neibor_boxes = neibor_boxes.unsqueeze(0)
             nb_obj_feature = nb_obj_feature.unsqueeze(0)
             ego_obj_feature = ego_obj_feature.unsqueeze(0)
-
-        # get attention of scene obj
-        # Q_all = self.query_projector(all_box)
+            fake_laser_beam = fake_laser_beam.unsqueeze(0)
 
 
-        nb_obj_feature_ = self.feature_preprocessor(nb_obj_feature)
-        ego_obj_feature_ = self.feature_preprocessor(ego_obj_feature)
-
-
-        K_all = self.key_projector(nb_obj_feature_)
-        V_all = self.value_projector(nb_obj_feature_)
-
-        # query: ego_obj_feature
-        Q = self.query_projector(ego_obj_feature_)
-
-        # cal cross attention
-        attd = nn.Softmax(dim=-1)(torch.bmm(Q, K_all.permute(0, 2, 1))) * self._norm_f
-        # out vec
-        scene_attd_descriptor = torch.bmm(attd, V_all)
-
-        final_descriptor = self.scene_attd_projector(scene_attd_descriptor)
-
-        obj_embedding = self.obj_embedding_projector(final_descriptor)
-
-        obj_embedding = obj_embedding.permute(0, 2, 1)
-        # valid_dim = min(obstacle_data.shape[1], neibor_boxes.shape[1])
-        # obstacle_data[:, :valid_dim, :] = neibor_boxes[:, :valid_dim, :]
 
         state_vec = torch.cat([velocity_local,
                                acceleration_local,
@@ -170,7 +106,7 @@ class BEVVehicleStateEncoder(nn.Module):
                                collide_obj,
                                way_curvature,
                                lane_dis_obs,
-                               obj_embedding,
+                               fake_laser_beam,
                                ], dim=1).squeeze(-1)  # dim: bs, colume vector
         state_embedding = self.state_model(state_vec)
         return state_embedding

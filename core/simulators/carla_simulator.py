@@ -17,6 +17,7 @@ from core.utils.planner import BasicPlanner, BehaviorPlanner, LBCPlannerNew
 from core.utils.others.tcp_helper import find_traffic_manager_port
 from core.utils.simulator_utils.spawn_points_pool import SpawnPointsPool
 from core.utils.simulator_utils.carla_utils import get_lane_marker_dis, get_neibor_obj_bev_box, get_neibor_obj_feature
+from core.utils.simulator_utils.fake_laser_sensor import get_neibor_obj_laser_reading
 
 import carla
 from carla import WeatherParameters
@@ -856,6 +857,8 @@ class CarlaSimulator(BaseSimulator):
         n_boxes, n_boxes_num = get_neibor_obj_bev_box(all_actor_with_trans, hero_x,
                                          hero_y, hero_yaw, hero_actor.id, range_scope=30.0)
         nb_obj_feature, ego_obj_feature = get_neibor_obj_feature(all_actor_with_trans, hero_actor.id, range_scope=30.0)
+        fake_laser_pts, fake_line_laser_ranges = get_neibor_obj_laser_reading(all_actor_with_trans, hero_actor.id, range_scope=30.0)
+
         navigation = {
             'agent_state': agent_state.value,
             'command': command.value,
@@ -870,6 +873,8 @@ class CarlaSimulator(BaseSimulator):
             'waypoint_curvature': np.array(waypoint_curvature_list),
             'most_left_lanemarker_dis': np.array(most_left_lanemarker_dis),
             'most_right_lanemarker_dis': np.array(most_right_lanemarker_dis),
+            'fake_laser_pts': fake_laser_pts,
+            'fake_line_laser_ranges': fake_line_laser_ranges,
             'neibor_boxes': np.array(n_boxes),
             'neibor_boxes_num': n_boxes_num,
             'nb_obj_feature': nb_obj_feature,

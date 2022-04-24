@@ -118,6 +118,8 @@ def get_obs_out(obs):
         'neibor_boxes': (neibor_boxes / 30.0).reshape(-1, 1),
         'nb_obj_feature': obs['nb_obj_feature'],  # have been normalized
         'ego_obj_feature': obs['ego_obj_feature'],
+        'fake_laser_pts': obs['fake_laser_pts'],
+        'fake_line_laser_ranges': obs['fake_line_laser_ranges'].reshape(-1, 1) / 30.0,
         # 'bev_obj': obs['birdview'][..., 5:6] + obs['birdview'][..., 6:7],
         # 'bev_road': obs['birdview'][..., 0:1] + obs['birdview'][..., 1:2],
 

@@ -358,7 +358,7 @@ class SimpleCarlaEnv(BaseDriveEnv):
 
         if self._add_camera_vis_to_obs:
             obs['camera_vis'] = self._probe_camera_visualizer.get_visualize_img(birdview=obs['birdview'],
-                                                                                linelidar=obs['linelidar'],
+                                                                                linelidar=obs['fake_laser_pts'],
                                                                                 otherobs=obs_for_vis
                                                                                 )
 
@@ -502,6 +502,10 @@ class SimpleCarlaEnv(BaseDriveEnv):
                 'neibor_boxes_num': navigation['neibor_boxes_num'],
                 'nb_obj_feature': navigation['nb_obj_feature'],
                 'ego_obj_feature': navigation['ego_obj_feature'],
+                'fake_laser_pts': navigation['fake_laser_pts'],
+                'fake_line_laser_ranges': navigation['fake_line_laser_ranges'],
+
+
                 'waypoint_curvature': np.float32(navigation['waypoint_curvature']),
                 'last_steer': self._last_steer_obs,
 
