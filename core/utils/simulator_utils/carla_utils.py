@@ -291,6 +291,8 @@ def get_neibor_obj_feature(actors_with_transforms,  hero_id, range_scope=30.0):
     hero_x = hero_transform.location.x
     hero_y = hero_transform.location.y
     hero_yaw = hero_transform.rotation.yaw
+    # !!!!!!!!!!!!!! pay attention to yaw
+    hero_yaw = -hero_yaw
     hero_yaw_rad = np.deg2rad(hero_yaw)
 
     dis_list = []
