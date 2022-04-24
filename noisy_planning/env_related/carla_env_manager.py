@@ -539,12 +539,12 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                         }
                         det_bev_render_buffer = render_birdview_image(chn_dict)
                         det_fake_lidar = draw_line_lidar(timestep.obs['fake_laser_pts'])
-                        pil_img = Image.fromarray(timestep.obs['camera_vis'])
+                        pil_img = Image.fromarray(np.uint8(timestep.obs['camera_vis']))
                         total_width = pil_img.width
                         total_height = pil_img.height
                         _subfigure_width = 160
-                        subfig_det_bev = ((total_width - _subfigure_width, _subfigure_width * 2), (total_width, _subfigure_width * 3))
-                        subfig_det_lidar = ((total_width - _subfigure_width, _subfigure_width * 3), (total_width, _subfigure_width * 4))
+                        subfig_det_bev = (total_width - _subfigure_width, _subfigure_width * 2)
+                        subfig_det_lidar = (total_width - _subfigure_width, _subfigure_width * 3)
                         pil_img.paste(Image.fromarray(det_bev_render_buffer), subfig_det_bev)
                         pil_img.paste(det_fake_lidar, subfig_det_lidar)
                         timestep.obs['camera_vis'] = np.array(pil_img)
