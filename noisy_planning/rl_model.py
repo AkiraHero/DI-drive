@@ -38,6 +38,16 @@ class BEVVehicleStateEncoder(nn.Module):
         self._value_dim = 24
         self._norm_f = 1. / (self._scene_feat_dim ** 0.5)
 
+
+        self.feature_preprocessor = nn.Sequential(
+            nn.Linear(self._scene_part_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 64),
+            nn.ReLU(),
+            nn.Linear(64, self._scene_part_dim),
+            nn.ReLU()
+        )
+
         self.query_projector = nn.Linear(self._scene_part_dim, self._scene_feat_dim)
         self.key_projector = nn.Linear(self._scene_part_dim, self._scene_feat_dim)
         self.value_projector = nn.Linear(self._scene_part_dim, self._value_dim)
@@ -127,18 +137,24 @@ class BEVVehicleStateEncoder(nn.Module):
 
         # get attention of scene obj
         # Q_all = self.query_projector(all_box)
-        K_all = self.key_projector(nb_obj_feature)
-        V_all = self.value_projector(nb_obj_feature)
+
+
+        nb_obj_feature_ = self.feature_preprocessor(nb_obj_feature)
+        ego_obj_feature_ = self.feature_preprocessor(ego_obj_feature)
+
+
+        K_all = self.key_projector(nb_obj_feature_)
+        V_all = self.value_projector(nb_obj_feature_)
 
         # query: ego_obj_feature
-        Q = self.query_projector(ego_obj_feature)
+        Q = self.query_projector(ego_obj_feature_)
 
         # cal cross attention
         attd = nn.Softmax(dim=-1)(torch.bmm(Q, K_all.permute(0, 2, 1))) * self._norm_f
         # out vec
         scene_attd_descriptor = torch.bmm(attd, V_all)
 
-        final_descriptor = self.scene_attd_projector(scene_attd_descriptor) + self.self_box_projector(ego_obj_feature)
+        final_descriptor = self.scene_attd_projector(scene_attd_descriptor)
 
         obj_embedding = self.obj_embedding_projector(final_descriptor)
 
