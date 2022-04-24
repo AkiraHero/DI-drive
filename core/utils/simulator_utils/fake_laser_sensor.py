@@ -48,7 +48,7 @@ def get_neibor_obj_laser_reading(actors_with_transforms,  hero_id, range_scope=3
     azimuth_range_max = 90.0
     azimuth_slot_num = int((azimuth_range_max - azimuth_range_min) // azimuth_resolution) + 1
     ranges_slot = [range_scope for i in range(azimuth_slot_num)]
-    point_slot = [None for i in range(azimuth_slot_num)]
+    point_slot = [(0.0, 0.0) for i in range(azimuth_slot_num)]
 
 
     vehicles = []

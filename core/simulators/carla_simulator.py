@@ -793,6 +793,9 @@ class CarlaSimulator(BaseSimulator):
                 our_waypoint_list.append(hero_route[cur_inx][0])
 
         most_left_lanemarker_dis, most_right_lanemarker_dis = get_lane_marker_dis(our_waypoint_list, hero_x, hero_y)
+        while len(most_left_lanemarker_dis) < self._waypoint_num:
+            most_left_lanemarker_dis.append(most_left_lanemarker_dis[-1])
+            most_right_lanemarker_dis.append(most_right_lanemarker_dis[-1])
         # for visualize
         if self._bev_wrapper is not None:
             self._bev_wrapper.update_waypoints(our_waypoint_list)

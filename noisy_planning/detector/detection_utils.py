@@ -96,7 +96,7 @@ def draw_detection_result(pred, map_width, map_height, pixel_ahead, map_pixels_p
     azimuth_range_max = 90.0
     azimuth_slot_num = int((azimuth_range_max - azimuth_range_min) // azimuth_resolution) + 1
     ranges_slot = [range_scope for i in range(azimuth_slot_num)]
-    point_slot = [None for i in range(azimuth_slot_num)]
+    point_slot = [(0., 0.) for i in range(azimuth_slot_num)]
     '''
     =================
     '''
@@ -124,11 +124,14 @@ def draw_detection_result(pred, map_width, map_height, pixel_ahead, map_pixels_p
         if distance < range_scope and front:
             in_range = True
 
+        yaw_delta = np.pi / 2.0
         if in_range:
             # feature1: relative corners: 8 dim normalized
             relative_corners = []
             for i in corners:
-                dx, dy = i.x, i.y
+                # illness coordinate.... need to tease apart: bev/laser and all....
+                dx = -i.y
+                dy = i.x
                 relative_corners.append([dx, dy])
             box_pt_x, box_pt_y = get_bourndary_points(relative_corners)
             box_pt_xs.append(box_pt_x)
