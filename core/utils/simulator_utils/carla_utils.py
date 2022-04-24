@@ -199,6 +199,8 @@ def get_neibor_obj_bev_box(actors_with_transforms, hero_x, hero_y, hero_yaw, her
     vehicles = []
     traffic_lights = []
     walkers = []
+    # !!!!!!!!!!!!!! pay attention to yaw
+    hero_yaw = -hero_yaw
     hero_yaw_rad = np.deg2rad(hero_yaw)
     for actor_with_transform in actors_with_transforms:
         actor = actor_with_transform[0]
