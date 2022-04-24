@@ -18,6 +18,11 @@ from noisy_planning.utils.debug_utils import generate_general_logger, TestTimer
 from noisy_planning.detector.detection_model_wrapper import DetectionModelWrapper
 from noisy_planning.detector.detection_utils import detection_process
 from core.utils.others.visualizer import Visualizer
+
+
+from core.utils.simulator_utils.carla_actor_probe_visualizer import draw_line_lidar
+from PIL import ImageFont, ImageDraw, Image
+
 '''
 compatable with Ding v0.2.1
 '''
@@ -522,6 +527,27 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             elif self._visualize_cfg.type == 'camera':
                 if timestep.obs:
                     assert 'camera_vis' in timestep.obs.keys()
+                    # add det image to canvas
+                    if 'detected' in timestep.obs.keys() and timestep.obs['detected']:
+                        chn_dict = {
+                            'road': timestep.obs['birdview'][..., 0],
+                            'lane': timestep.obs['birdview'][..., 1],
+                            'vehicle': timestep.obs['birdview'][..., 2],
+                            'pedestrian': timestep.obs['birdview'][..., 3],
+                            'route': timestep.obs['birdview'][..., 4],
+                            'hero': timestep.obs['birdview'][..., 5],
+                        }
+                        det_bev_render_buffer = render_birdview_image(chn_dict)
+                        det_fake_lidar = draw_line_lidar(timestep.obs['fake_laser_pts'])
+                        pil_img = Image.fromarray(timestep.obs['camera_vis'])
+                        total_width = pil_img.width
+                        total_height = pil_img.height
+                        _subfigure_width = 160
+                        subfig_det_bev = ((total_width - _subfigure_width, _subfigure_width * 2), (total_width, _subfigure_width * 3))
+                        subfig_det_lidar = ((total_width - _subfigure_width, _subfigure_width * 3), (total_width, _subfigure_width * 4))
+                        pil_img.paste(Image.fromarray(det_bev_render_buffer), subfig_det_bev)
+                        pil_img.paste(det_fake_lidar, subfig_det_lidar)
+                        timestep.obs['camera_vis'] = np.array(pil_img)
                     visualizer.set_canvas(timestep.obs['camera_vis'])
             visualizer.run_visualize()
 
@@ -532,7 +558,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                     self._visualizers[env_id] = None
             
             # delete unnecessary data
-            unnecessary_keys = ['camera_vis']
+            unnecessary_keys = ['camera_vis', 'birdview']
             for k in unnecessary_keys:
                 if timestep.obs:
                     if k in timestep.obs.keys():

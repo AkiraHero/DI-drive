@@ -16,6 +16,37 @@ from collections import OrderedDict
 from PIL import ImageFont, ImageDraw, Image
 
 
+def draw_line_lidar(points):
+    points = points[:, :3]
+    pixel_size = 0.2
+    cx = 40
+    cy = 80
+    img_width = 160
+    img_height = 160
+    img = Image.new('RGB', (img_width, img_height))
+    draw = ImageDraw.Draw(img, "RGBA")
+    pt_num = points.shape[0]
+    valid_pt_num = 0
+    for i in range(pt_num):
+        x = points[i, 0]
+        y = points[i, 1]
+        # to adapt to carla ordinate: exchange x and y
+        py = int(x / pixel_size + cx)
+        px = int(y / pixel_size + cy)
+        range_ = (x ** 2 + y ** 2) ** 0.5
+        theta = np.arctan2(y, x)
+        if abs(theta) > np.pi / 2.0 or abs(y) < 0.0001:
+            continue
+        if py < 0 or py >= img_height or px < 0 or px >= img_width:
+            continue
+        valid_pt_num += 1
+        draw.point((px, py), fill=(255, 0, 255, 255))
+    py = int(cx)
+    px = int(cy)
+    draw.ellipse(((px - 3, py - 3), (px + 3, py + 3)), fill=(255, 0, 0, 255))
+    img = img.transpose(Image.FLIP_TOP_BOTTOM)
+    return img
+
 # todo: sustitute all opencv by pil
 
 def find_weather_presets():
