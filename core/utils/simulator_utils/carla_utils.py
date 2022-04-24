@@ -327,7 +327,7 @@ def get_neibor_obj_feature(actors_with_transforms,  hero_id, range_scope=30.0):
 
 
             # feature2: relative yaw: 1 dim normalized
-            relative_yaw = v[1].rotation.yaw - hero_yaw
+            relative_yaw = v[1].rotation.yaw - hero_transform.rotation.yaw
             while relative_yaw < -180.0:
                 relative_yaw += 360.0
             while relative_yaw > 180.0:
