@@ -186,13 +186,15 @@ class SimpleCarlaEnv(BaseDriveEnv):
         :Returns:
             Dict: The initial observation.
         """
+        if 'enable_vis' in kwargs:
+            self._add_camera_vis_to_obs = kwargs['enable_vis']
         self.logger.error("[Reset paras]{}".format(str(kwargs)))
         if not self._launched_simulator:
             self._init_carla_simulator()
 
         self._simulator.init(**kwargs)
 
-        if self._cfg.add_camera_vis_to_obs:
+        if self._add_camera_vis_to_obs:
             if self._probe_camera_visualizer is not None:
                 self._probe_camera_visualizer.reset(self.hero_player)
             else:

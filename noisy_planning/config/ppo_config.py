@@ -6,12 +6,12 @@ ppo_config = dict(
     only_eval=True,
     env=dict(
         collector_env_num=0,
-        evaluator_env_num=1,
+        evaluator_env_num=17,
         simulator=dict(
             town='Town01',
             spawn_manner="random",  # random, near
-            spawn_pos_pool_dat="/home/akira/Project/Model_behaviour/DI-drive/noisy_planning/utils/town5_outter_loop.waypt",
-            spawn_pos_radius=20.0,
+            spawn_pos_pool_dat="/cpfs2/user/juxiaoliang/town5_outter_loop.waypt",
+            spawn_pos_radius=30.0,
             delta_seconds=0.1,
             disable_two_wheels=True,
             verbose=False,
@@ -86,7 +86,7 @@ ppo_config = dict(
         off_route_distance=15,
         # reward_func="customized_compute_reward",
         reward_func="racing_reward",
-        add_camera_vis_to_obs=True,
+        add_camera_vis_to_obs=False,
         #reward_type=['goal', 'distance', 'speed', 'angle', 'failure', 'lane'],
         success_distance=15.0,
         success_reward=0,
@@ -103,8 +103,8 @@ ppo_config = dict(
                 step_timeout=120,
                 reset_timeout=120,
                 # visualize=dict(
-                #             type='birdview',
-                #             # outputs=['video'],
+                #             type='camera',
+                #             outputs=['video'],
                 #         ),
             ),
             eval=dict(
@@ -117,13 +117,14 @@ ppo_config = dict(
                 reset_timeout=120,
                 visualize=dict(
                             type='camera',
-                            outputs=['show'],
+                            outputs=['video'],
+                            enabled_id=[0],
                         ),
             )
         ),
         wrapper=dict(
-            collect=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
-            eval=dict(suite='race', suite_n_vehicles=0, suite_n_pedestrians=0, ),
+            collect=dict(suite='race', suite_n_vehicles=100, suite_n_pedestrians=0, ),
+            eval=dict(suite='race', suite_n_vehicles=100, suite_n_pedestrians=0, ),
         ),
     ),
     server=[
@@ -149,7 +150,7 @@ ppo_config = dict(
             learner=dict(
                 hook=dict(
                     log_show_after_iter=1000,
-                    # load_ckpt_before_run='/home/akira/Downloads/iteration_162000.pth.tar',
+                    load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-train_fake_laser_c2-2022-04-24-19-15-28/ckpt/iteration_63000.pth.tar',
                     save_ckpt_after_iter=3000,
                 ),
             ),
@@ -168,10 +169,10 @@ ppo_config = dict(
         eval=dict(
             evaluator=dict(
                 eval_freq=2000,
-                n_episode=20,
+                n_episode=500,
                 stop_rate=1.0,
                 transform_obs=True,
-                eval_once=False
+                eval_once=True
             ),
         ),
     ),

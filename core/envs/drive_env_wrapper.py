@@ -197,6 +197,7 @@ class BenchmarkEnvWrapper(DriveEnvWrapper):
             self._reset_param_index += 1
             if self._reset_param_index >= len(self._reset_param_list):
                 self._reset_param_index = 0
+        self._param.update(kwargs)
         return super().reset(**self._param)
 
     def step(self, action: Dict) -> Any:

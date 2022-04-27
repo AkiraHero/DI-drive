@@ -59,6 +59,8 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             self._visualize_cfg = cfg.visualize
             self._visualize_cfg['save_dir'] = self._visualizer_save_dir
         self._visualizers = {i: None for i in range(self._env_num)}
+        if self._visualize_cfg is not None:
+            self._enabled_vis_env = cfg.visualize['enabled_id']
 
 
     def _check_data(self, data: Dict, close: bool = False) -> bool:
@@ -259,6 +261,9 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
 
     def _reset(self, env_id: int) -> None:
         verbose = False
+        enable_vis =  env_id in self._enabled_vis_env
+        self._reset_param[env_id].update({'enable_vis': enable_vis})
+        
 
         # @retry_wrapper(max_retry=self._max_retry, waiting_time=self._retry_waiting_time)
         def reset_fn() -> bool:
@@ -298,7 +303,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                                 obs = self._obs_buffers[env_id].get()
                             self._ready_obs[env_id] = obs
                             self._env_reset_try_num[env_id] = 0
-                            # self.logger.info("[RESET] Env={}, reset_params={}".format(env_id, str(reset_paras)))
+                            self.logger.error("[RESET] Env={}, reset_params={}".format(env_id, str(reset_paras)))
                             return True
                         else:
                             if verbose:
@@ -350,11 +355,14 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
                 if self._visualizers[env_id] is not None:
                     self._visualizers[env_id].done()
                 else:
-                    self._visualizers[env_id] = Visualizer(self._visualize_cfg)
+                    #### only open env 0 for visualization #####
+                    if env_id in self._enabled_vis_env:
+                        self._visualizers[env_id] = Visualizer(self._visualize_cfg)
                 vis_name = "vis_env{}_{}".format(env_id,
                     time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
                 )
-                self._visualizers[env_id].init(vis_name)
+                if self._visualizers[env_id] is not None:
+                    self._visualizers[env_id].init(vis_name)
                 if self._ready_obs[env_id]:
                     if "camera_vis" in self._ready_obs[env_id].keys():
                         self._ready_obs[env_id].pop("camera_vis")

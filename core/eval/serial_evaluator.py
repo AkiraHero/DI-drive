@@ -77,6 +77,15 @@ class SerialEvaluator(BaseEvaluator):
         if self._eval_once:
             self._logger.error("[EVAL]==================================Using eval once===========================================")
 
+        # for evaluation....
+        self.keep_info = True
+        self.episode_info = {i:[] for i in range(self._env_num)}
+        if self.keep_info:
+            self._logger.error("Use keep info!! Keep {} envs info steps!".format(self._env_num))
+
+    def clear_info(self, env_id):
+        self.episode_info[env_id].clear()
+
     @property
     def env(self) -> BaseEnvManager:
         return self._env_manager
@@ -130,6 +139,12 @@ class SerialEvaluator(BaseEvaluator):
             with open(res_file_name, 'wb') as f:
                 pickle.dump(self._eval_all_result, f)
                 self._logger.error("[EVAL]Dumped eval result:" + res_file_name)
+
+    def save_episode_info(self, env_id):
+        res_file_name =  os.path.join(self._exp_name, 'eval_result_episode_info_env{}_cnt{}_{}.pickle'.format(env_id, self.episode_count, datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')))
+        with open(res_file_name, 'wb') as f:
+            pickle.dump(self.episode_info[env_id], f)
+            self._logger.error("[EVAL]Dumped eval result info:" + res_file_name)
 
     @auto_signal_handler("save_eval_result")
     def eval(
@@ -188,6 +203,7 @@ class SerialEvaluator(BaseEvaluator):
                         self._logger.warning("step {}, process timestep of env={}, it is abnormal".format(total_step, env_id))
                         self._env_manager.reset({env_id: None})
                         self._policy.reset([env_id])
+                        self.clear_info(env_id)
                         continue
                     if t.info['stuck']:
                         self._policy.reset([env_id])
@@ -195,6 +211,7 @@ class SerialEvaluator(BaseEvaluator):
                         self.episode_count += 1
                         self._logger.info(
                             "[EVALUATOR] env {} stop episode for it is stucked".format(env_id))
+                        self.clear_info(env_id)
                         continue
                     if env_steps[env_id] > self._env_max_steps:
                         self.episode_count += 1
@@ -209,26 +226,33 @@ class SerialEvaluator(BaseEvaluator):
                             ))
                         self._policy.reset([env_id])
                         env_steps[env_id] = 0
+                        self.clear_info(env_id)
                         continue
 
                     if t.done:
                         self._policy.reset([env_id])
                         env_steps[env_id] = 0
+                        self.episode_count += 1
                         result = {
                             'reward': t.info['final_eval_reward'],
                             'success': t.info['success'],
                             'step': int(t.info['tick']),
                             'failure_reason': t.info['failure_reason'],
+                            'end_id': env_id,
+                            'episode_cnt': self.episode_count,
                         }
                         if 'suite_name' in t.info.keys():
                             result['suite_name'] = t.info['suite_name']
-                        self.episode_count += 1
+                        
                         self._eval_all_result.append(result)
                         self._logger.info(
                             "[EVALUATOR] env {} finish episode, final reward: {}, current episode: {}".format(
                                 env_id, result['reward'], self.episode_count
                             )
                         )
+                        self.save_episode_info(env_id)
+                        self.clear_info(env_id)
+                    self.episode_info[env_id].append(t.info)
                     env_steps[env_id] += 1
                 if self._env_manager.done:
                     break
