@@ -2,15 +2,15 @@ from easydict import EasyDict
 
 ppo_config = dict(
     exp_name='ppo21_bev32_lr1e4_bs128_ns3000_update5_train_ft',
-    enable_eval=True,
-    only_eval=True,
+    enable_eval=False,
+    only_eval=False,
     env=dict(
-        collector_env_num=0,
-        evaluator_env_num=17,
+        collector_env_num=17,
+        evaluator_env_num=0,
         simulator=dict(
             town='Town01',
             spawn_manner="random",  # random, near
-            spawn_pos_pool_dat="/cpfs2/user/juxiaoliang/town5_outter_loop.waypt",
+            spawn_pos_pool_dat="/mnt/lustre/juxiaoliang.vendor/Project/mdl/town5_outter_loop.waypt",
             spawn_pos_radius=30.0,
             delta_seconds=0.1,
             disable_two_wheels=True,
@@ -60,7 +60,7 @@ ppo_config = dict(
         detector=dict(
             model_repo="openpcdet",
             model_name="pointpillar",
-            ckpt="/cpfs2/user/juxiaoliang/checkpoint_epoch_160.pth",
+            ckpt="/mnt/lustre/juxiaoliang.vendor/Project/mdl/perception/pointpillar_checkpoint_epoch_160.pth",
             # ckpt="/home/xlju/Downloads/pointpillar/pointpillar/ckpt/checkpoint_epoch_160.pth",
             max_batch_size=32,
             data_config=dict(
@@ -128,7 +128,16 @@ ppo_config = dict(
         ),
     ),
     server=[
-        dict(carla_host='localhost', carla_ports=[9000, 9034, 2]),
+        dict(carla_host='10.5.8.157', carla_ports=[34567, 34577, 2]),
+        dict(carla_host='10.5.8.153', carla_ports=[34577, 34587, 2]),
+        dict(carla_host='10.5.8.47', carla_ports=[31287, 31297, 2]),
+        dict(carla_host='10.5.8.47', carla_ports=[31297, 31307, 2]),
+        dict(carla_host='10.5.8.155', carla_ports=[31324, 31334, 2]),
+        dict(carla_host='10.5.8.46', carla_ports=[35464, 35474, 2]),
+        dict(carla_host='10.5.8.47', carla_ports=[35777, 35787, 2]),
+        dict(carla_host='10.5.8.151', carla_ports=[35797, 35807, 2]),
+        dict(carla_host='10.5.8.151', carla_ports=[30807, 30817, 2]),
+        dict(carla_host='10.5.8.157', carla_ports=[30417, 30427, 2]),
     ],
     policy=dict(
         cuda=True,
@@ -150,7 +159,7 @@ ppo_config = dict(
             learner=dict(
                 hook=dict(
                     log_show_after_iter=1000,
-                    load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-train_fake_laser_c2-2022-04-24-19-15-28/ckpt/iteration_63000.pth.tar',
+                    # load_ckpt_before_run='/cpfs2/user/juxiaoliang/project/DI-drive/noisy_planning/output_log/ppo-train_fake_laser_c2-2022-04-24-19-15-28/ckpt/iteration_63000.pth.tar',
                     save_ckpt_after_iter=3000,
                 ),
             ),
