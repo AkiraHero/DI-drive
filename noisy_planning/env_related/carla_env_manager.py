@@ -59,6 +59,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             self._visualize_cfg = cfg.visualize
             self._visualize_cfg['save_dir'] = self._visualizer_save_dir
         self._visualizers = {i: None for i in range(self._env_num)}
+        self._enabled_vis_env = None
         if self._visualize_cfg is not None:
             self._enabled_vis_env = cfg.visualize['enabled_id']
 
@@ -261,7 +262,9 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
 
     def _reset(self, env_id: int) -> None:
         verbose = False
-        enable_vis =  env_id in self._enabled_vis_env
+        enable_vis = False
+        if self._enabled_vis_env:
+            enable_vis = env_id in self._enabled_vis_env
         self._reset_param[env_id].update({'enable_vis': enable_vis})
         
 
