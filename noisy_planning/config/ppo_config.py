@@ -5,7 +5,7 @@ ppo_config = dict(
     enable_eval=False,
     only_eval=False,
     env=dict(
-        collector_env_num=17,
+        collector_env_num=1,
         evaluator_env_num=0,
         simulator=dict(
             town='Town01',
@@ -56,25 +56,8 @@ ppo_config = dict(
                 ),
             ),
         ),
-        enable_detector=False,
-        detector=dict(
-            model_repo="openpcdet",
-            model_name="pointpillar",
-            ckpt="/mnt/lustre/juxiaoliang.vendor/Project/mdl/perception/pointpillar_checkpoint_epoch_160.pth",
-            # ckpt="/home/xlju/Downloads/pointpillar/pointpillar/ckpt/checkpoint_epoch_160.pth",
-            max_batch_size=32,
-            data_config=dict(
-                class_names=['Car', 'Pedestrian'],
-                point_feature_encoder=dict(
-                    num_point_features=4,
-                ),
-                depth_downsample_factor=None
-            ),
-            score_thres={
-                "vehicle": 0.6,
-                "walker": 0.5
-            }
-        ),
+        enable_detector=True,
+        detector="pointpillar",  # pointpillar/pvrcnn/centerpoint/fake-pointpillar/fake-pvrcnn/fake-centerpoint/
         col_is_failure=True,
         stuck_is_failure=True,
         ignore_light=True,
@@ -128,6 +111,7 @@ ppo_config = dict(
         ),
     ),
     server=[
+        dict(carla_host='localhost', carla_ports=[9000, 9002, 2]),
         dict(carla_host='10.5.8.157', carla_ports=[34567, 34577, 2]),
         dict(carla_host='10.5.8.153', carla_ports=[34577, 34587, 2]),
         dict(carla_host='10.5.8.47', carla_ports=[31287, 31297, 2]),

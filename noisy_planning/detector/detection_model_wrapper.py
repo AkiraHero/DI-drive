@@ -13,11 +13,30 @@ from pcdet.config import cfg_from_yaml_file
 from pcdet.datasets.dataset import DatasetTemplate
 from pcdet.models import load_data_to_gpu
 
-DEFAULT_DETECTION_CFG = dict(
+# DEFAULT_DETECTION_CFG = dict(
+#     model_repo="openpcdet",
+#     model_name="pointpillar",
+#     repo_config_file="config/openpcdet_config/pointpillar_carla.yaml",
+#     ckpt="",
+#     data_config=dict(
+#         class_names=['Car', 'Pedestrian'],
+#         point_feature_encoder=dict(
+#             num_point_features=4,
+#         ),
+#         depth_downsample_factor=None
+#     ),
+#     score_thres={
+#         "vehicle": 0.6,
+#         "walker": 0.4
+#     }
+# )
+
+DEFAULT_POINTPILLAR_CFG = dict(
     model_repo="openpcdet",
     model_name="pointpillar",
-    repo_config_file="config/openpcdet_config/pointpillar_carla.yaml",
-    ckpt="",
+    repo_config_file="config/openpcdet_config/pointpillar/pointpillar_carla.yaml",
+    ckpt="detector_ckpt/pointpillar_checkpoint_epoch_120.pth",
+    max_batch_size=32,
     data_config=dict(
         class_names=['Car', 'Pedestrian'],
         point_feature_encoder=dict(
@@ -27,9 +46,48 @@ DEFAULT_DETECTION_CFG = dict(
     ),
     score_thres={
         "vehicle": 0.6,
-        "walker": 0.4
-    }
+        "walker": 0.5
+    },
 )
+
+DEFAULT_CENTERPOINT_CFG = dict(
+    model_repo="openpcdet",
+    model_name="centerpoint",
+    repo_config_file="config/openpcdet_config/centerpoint/centerpoint.yaml",
+    ckpt="detector_ckpt/centerpoint_checkpoint_epoch_120.pth",
+    max_batch_size=32,
+    data_config=dict(
+        class_names=['Car', 'Pedestrian'],
+        # point_feature_encoder=dict(
+        #     num_point_features=4,
+        # ),
+        # depth_downsample_factor=None
+    ),
+    score_thres={
+        "vehicle": 0.6,
+        "walker": 0.5
+    },
+)
+
+DEFAULT_PVRCNN_CFG = dict(
+    model_repo="openpcdet",
+    model_name="pvrcnn",
+    repo_config_file="config/openpcdet_config/pvrcnn/pv_rcnn_carla.yaml",
+    ckpt="detector_ckpt/pvrcnn_checkpoint_epoch_120.pth",
+    max_batch_size=32,
+    data_config=dict(
+        class_names=['Car', 'Pedestrian'],
+        # point_feature_encoder=dict(
+        #     num_point_features=4,
+        # ),
+        # depth_downsample_factor=None
+    ),
+    score_thres={
+        "vehicle": 0.6,
+        "walker": 0.5
+    },
+)
+
 
 
 class EmbeddedDetectionModelBase(nn.Module):
@@ -94,6 +152,9 @@ class OpenpcdetModel(EmbeddedDetectionModelBase):
             self.cfg.repo_config.DATA_CONFIG._BASE_CONFIG_ = \
                 os.path.join(parent_folder, self.cfg.repo_config.DATA_CONFIG._BASE_CONFIG_)
             assert os.path.isfile(self.cfg.repo_config.DATA_CONFIG._BASE_CONFIG_)
+        # make up the ckpt path
+        if not os.path.isfile(self.cfg.ckpt):
+            self.cfg.ckpt = os.path.join(parent_folder, self.cfg.ckpt)
 
     def preprocess_data(self, data):
         data = self.point_feature_encoder.forward(data)
@@ -126,10 +187,19 @@ class OpenpcdetModel(EmbeddedDetectionModelBase):
 
 
 class DetectionModelWrapper:
-    def __init__(self, cfg=None):
-        self.detection_cfg = EasyDict(DEFAULT_DETECTION_CFG)
-        if cfg is not None:
-            self.detection_cfg.update(cfg)
+    support_model = ['pointpillar', 'pvrcnn', 'centerpoint']
+    def __init__(self, model_name):
+        if model_name not in self.support_model:
+            raise NotImplementedError
+        self.detection_cfg = None
+        if model_name == "pointpillar":
+            self.detection_cfg = EasyDict(DEFAULT_POINTPILLAR_CFG)
+        elif model_name == "pvrcnn":
+            self.detection_cfg = EasyDict(DEFAULT_PVRCNN_CFG)
+        elif model_name == "centerpoint":
+            self.detection_cfg = EasyDict(DEFAULT_CENTERPOINT_CFG)
+        else:
+            raise NotImplementedError
         self.model = None
         self.init_detection_model(self.detection_cfg)
 
