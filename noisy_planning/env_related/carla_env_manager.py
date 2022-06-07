@@ -265,7 +265,9 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         enable_vis = False
         if self._enabled_vis_env:
             enable_vis = env_id in self._enabled_vis_env
-        self._reset_param[env_id].update({'enable_vis': enable_vis})
+            if self._reset_param[env_id] is None:
+                self._reset_param[env_id] = {}
+            self._reset_param[env_id].update({'enable_vis': enable_vis})
         
 
         # @retry_wrapper(max_retry=self._max_retry, waiting_time=self._retry_waiting_time)
