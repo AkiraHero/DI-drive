@@ -18,7 +18,7 @@ DEFAULT_POINTPILLAR_CFG = dict(
         depth_downsample_factor=None
     ),
     score_thres={
-        "vehicle": 0.6,
+        "vehicle": 0.7,
         "walker": 0.5
     },
 )
@@ -37,7 +37,7 @@ DEFAULT_CENTERPOINT_CFG = dict(
         depth_downsample_factor=None
     ),
     score_thres={
-        "vehicle": 0.6,
+        "vehicle": 0.7,
         "walker": 0.5
     },
 )
@@ -56,7 +56,7 @@ DEFAULT_PVRCNN_CFG = dict(
         depth_downsample_factor=None
     ),
     score_thres={
-        "vehicle": 0.6,
+        "vehicle": 0.7,
         "walker": 0.5
     },
 )
