@@ -1,12 +1,12 @@
 import yaml
 
-sample = "/home/akira/Project/Model_behaviour/DI-drive/noisy_planning/carla0911pod.yaml"
+sample = "/home/akira/Project/Model_behaviour/DI-drive/noisy_planning/sensephoenix/carla0911pod.yaml"
 outfile = "tst.yaml"
 namespace = "shlab-cla"
-name_app = "carla0911pod11"
+name_app = "carla0911pod16"
 app_label_name = name_app
 service_name = name_app + '-service'
-start_port = 30417
+start_port = 31297
 num = 5
 container_name = name_app
 
@@ -21,6 +21,7 @@ with open(sample) as f:
     pod_config['spec']['containers'][0]['args'] = ["./start.sh -n {} -p {}".format(num, start_port)]
     pod_config['spec']['containers'][0]['name'] = container_name
     svc_config['metadata']['name'] = service_name
+    svc_config['metadata']['namespace'] = namespace
     svc_config['spec']['ports'] = []
     cur_port = start_port
     for i in range(num * 2):

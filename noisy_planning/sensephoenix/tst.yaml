@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: carla0911pod16
+  name: carla0911pod16
+  namespace: shlab-cla
+spec:
+  containers:
+  - args:
+    - ./start.sh -n 5 -p 31297
+    command:
+    - /bin/bash
+    - -c
+    image: registry.sensetime.com/sensephoenix/carla0911
+    imagePullPolicy: Always
+    name: carla0911pod16
+    resources:
+      limits:
+        cpu: '12'
+        memory: 64Gi
+        nvidia.com/gpu-v100: '1'
+        rdma/hca: '1'
+      requests:
+        cpu: '12'
+        memory: 64Gi
+        nvidia.com/gpu-v100: '1'
+        rdma/hca: '1'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carla0911pod16-service
+  namespace: shlab-cla
+spec:
+  ports:
+  - name: p31297
+    nodePort: 31297
+    port: 31297
+    protocol: TCP
+    targetPort: 31297
+  - name: p31298
+    nodePort: 31298
+    port: 31298
+    protocol: TCP
+    targetPort: 31298
+  - name: p31299
+    nodePort: 31299
+    port: 31299
+    protocol: TCP
+    targetPort: 31299
+  - name: p31300
+    nodePort: 31300
+    port: 31300
+    protocol: TCP
+    targetPort: 31300
+  - name: p31301
+    nodePort: 31301
+    port: 31301
+    protocol: TCP
+    targetPort: 31301
+  - name: p31302
+    nodePort: 31302
+    port: 31302
+    protocol: TCP
+    targetPort: 31302
+  - name: p31303
+    nodePort: 31303
+    port: 31303
+    protocol: TCP
+    targetPort: 31303
+  - name: p31304
+    nodePort: 31304
+    port: 31304
+    protocol: TCP
+    targetPort: 31304
+  - name: p31305
+    nodePort: 31305
+    port: 31305
+    protocol: TCP
+    targetPort: 31305
+  - name: p31306
+    nodePort: 31306
+    port: 31306
+    protocol: TCP
+    targetPort: 31306
+  selector:
+    app: carla0911pod16
+  type: NodePort
