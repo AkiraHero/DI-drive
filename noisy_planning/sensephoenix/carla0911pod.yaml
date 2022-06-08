@@ -1,0 +1,90 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: carla0911pod3
+  namespace: shlab-cia
+  labels:
+    app: carla0911pod3
+spec:
+  containers:
+  - args:
+    - ./run_carla.sh -n 5 -p 34577
+    command:
+    - /bin/bash
+    - -c
+    image: registry.sensetime.com/sensephoenix/carla0911
+    imagePullPolicy: Always
+    name: carla0911-3
+    resources:
+      limits:
+        cpu: "12"
+        memory: 64Gi
+        nvidia.com/gpu: "1"
+        rdma/hca: "1"
+      requests:
+        cpu: "12"
+        memory: 64Gi
+        nvidia.com/gpu: "1"
+        rdma/hca: "1"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carla0911pod-service3
+spec:
+  type: NodePort     
+  ports:
+  - port: 34577          
+    targetPort: 34577  
+    protocol: TCP
+    nodePort: 34577
+    name: p34577
+  - port: 34578          
+    targetPort: 34578  
+    protocol: TCP
+    nodePort: 34578  
+    name: p34578
+  - port: 34579          
+    targetPort: 34579  
+    protocol: TCP
+    nodePort: 34579
+    name: p34579 
+  - port: 34580          
+    targetPort: 34580  
+    protocol: TCP
+    nodePort: 34580 
+    name: p34580 
+  - port: 34581          
+    targetPort: 34581  
+    protocol: TCP
+    nodePort: 34581 
+    name: p34581 
+  - port: 34582          
+    targetPort: 34582  
+    protocol: TCP
+    nodePort: 34582 
+    name: p34582
+  - port: 34583          
+    targetPort: 34583  
+    protocol: TCP
+    nodePort: 34583
+    name: p34583  
+  - port: 34584          
+    targetPort: 34584  
+    protocol: TCP
+    nodePort: 34584
+    name: p34584
+  - port: 34585          
+    targetPort: 34585  
+    protocol: TCP
+    nodePort: 34585
+    name: p34585
+  - port: 34586          
+    targetPort: 34586  
+    protocol: TCP
+    nodePort: 34586
+    name: p34586  
+  selector:
+    app: carla0911pod3         
+  
