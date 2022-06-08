@@ -157,12 +157,12 @@ def main(args, seed=0):
     '''
     detection_model = None
     obs_bev_config = None
-    detection_max_batch_size = None
+    # detection_max_batch_size = None
     if cfg.env.enable_detector:
         logger.error("Detector enabled.")
-        detection_model = DetectionModelWrapper(cfg=cfg.env.detector)
+        detection_model = DetectionModelWrapper(model_name=cfg.env.detector)
         obs_bev_config = [i for i in cfg.env.simulator.obs if i['name'] == 'birdview'][0]
-        detection_max_batch_size = cfg.env.detector.max_batch_size
+        # detection_max_batch_size = cfg.env.detector.max_batch_size
     else:
         logger.error("Detector not enabled.")
 
@@ -184,7 +184,7 @@ def main(args, seed=0):
             env_fn=[partial(wrapped_env, cfg.env, cfg.env.wrapper.collect, *tcp_list[i]) for i in range(collector_env_num)],
             cfg=cfg.env.manager.collect,
             detector=detection_model,
-            detection_max_batch_size=detection_max_batch_size,
+            # detection_max_batch_size=detection_max_batch_size,
             bev_obs_config=obs_bev_config,
             env_ports=[tcp_list[i] for i in range(collector_env_num)],
             exp_name=cfg.exp_name,
@@ -213,7 +213,7 @@ def main(args, seed=0):
                         range(evaluator_env_num)],
                 cfg=cfg.env.manager.eval,
                 detector=detection_model,
-                detection_max_batch_size=detection_max_batch_size,
+                # detection_max_batch_size=detection_max_batch_size,
                 bev_obs_config=obs_bev_config,
                 env_ports=[tcp_list[collector_env_num + i] for i in range(evaluator_env_num)],
                 exp_name = cfg.exp_name,

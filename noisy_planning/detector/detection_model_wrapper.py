@@ -30,13 +30,13 @@ from pcdet.models import load_data_to_gpu
 #         "walker": 0.4
 #     }
 # )
-
+default_max_batchsize = 16
 DEFAULT_POINTPILLAR_CFG = dict(
     model_repo="openpcdet",
     model_name="pointpillar",
     repo_config_file="config/openpcdet_config/pointpillar/pointpillar_carla.yaml",
     ckpt="detector_ckpt/pointpillar_checkpoint_epoch_120.pth",
-    max_batch_size=32,
+    max_batch_size=default_max_batchsize,
     data_config=dict(
         class_names=['Car', 'Pedestrian'],
         point_feature_encoder=dict(
@@ -55,7 +55,7 @@ DEFAULT_CENTERPOINT_CFG = dict(
     model_name="centerpoint",
     repo_config_file="config/openpcdet_config/centerpoint/centerpoint.yaml",
     ckpt="detector_ckpt/centerpoint_checkpoint_epoch_120.pth",
-    max_batch_size=32,
+    max_batch_size=default_max_batchsize,
     data_config=dict(
         class_names=['Car', 'Pedestrian'],
         # point_feature_encoder=dict(
@@ -74,13 +74,13 @@ DEFAULT_PVRCNN_CFG = dict(
     model_name="pvrcnn",
     repo_config_file="config/openpcdet_config/pvrcnn/pv_rcnn_carla.yaml",
     ckpt="detector_ckpt/pvrcnn_checkpoint_epoch_120.pth",
-    max_batch_size=32,
+    max_batch_size=default_max_batchsize,
     data_config=dict(
         class_names=['Car', 'Pedestrian'],
-        # point_feature_encoder=dict(
-        #     num_point_features=4,
-        # ),
-        # depth_downsample_factor=None
+        point_feature_encoder=dict(
+            num_point_features=4,
+        ),
+        depth_downsample_factor=None
     ),
     score_thres={
         "vehicle": 0.6,

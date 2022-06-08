@@ -36,7 +36,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             cfg: EasyDict = EasyDict({}),
             env_ports=None,
             detector=None,
-            detection_max_batch_size=None,
+            # detection_max_batch_size=None,
             bev_obs_config=None,
             exp_name=None,
     ) -> None:
@@ -46,7 +46,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         self.logger.setLevel(logging.INFO)
 
         self._detection_model = detector
-        self._detection_batch_size = detection_max_batch_size
+        # self._detection_batch_size = detection_max_batch_size
         self._bev_obs_config = bev_obs_config
         assert len(env_ports) == len(env_fn)
         self._env_ports = env_ports
@@ -386,7 +386,7 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
             return
         # detection
         assert isinstance(self._detection_model, DetectionModelWrapper)
-        max_batch_size = self._detection_batch_size
+        max_batch_size = self._detection_model.detection_cfg.max_batch_size
 
         # get unique datalist
         obs_list = data_list

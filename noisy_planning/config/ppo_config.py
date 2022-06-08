@@ -111,7 +111,7 @@ ppo_config = dict(
         ),
     ),
     server=[
-        dict(carla_host='localhost', carla_ports=[9000, 9002, 2]),
+        # dict(carla_host='localhost', carla_ports=[2000, 2002, 2]),
         dict(carla_host='10.5.8.157', carla_ports=[34567, 34577, 2]),
         dict(carla_host='10.5.8.153', carla_ports=[34577, 34587, 2]),
         dict(carla_host='10.5.8.47', carla_ports=[31287, 31297, 2]),
