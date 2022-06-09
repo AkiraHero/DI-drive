@@ -120,10 +120,9 @@ def draw_detection_result(pred, map_width, map_height, pixel_ahead, map_pixels_p
         '''
         # get any kind of relative position is ok
         in_range = False
-        distance, front = get_corner_nearest_dis(corners, 0, 0, 0)
+        distance, front = get_corner_nearest_dis(corners, 0, 0, np.pi / 2)
         if distance < range_scope and front:
             in_range = True
-
         yaw_delta = np.pi / 2.0
         if in_range:
             # feature1: relative corners: 8 dim normalized
