@@ -11,6 +11,7 @@ srun -p ${PARTITION} \
     --gres=gpu:${GPUS_PER_NODE} \
     --ntasks=${GPUS} \
     --ntasks-per-node=${GPUS_PER_NODE} \
+    --cpus-per-task=12 \
     --kill-on-bad-exit=1 \
-    --partition=shlab_adg \
-    sh st_ppo.sh tst
+    --partition=shlab_ap_ll \
+    sh st_ppo.sh $1

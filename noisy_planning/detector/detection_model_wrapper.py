@@ -3,7 +3,7 @@ from noisy_planning.detector.openpcdet_model import OpenpcdetModel
 from noisy_planning.detector.openpcdet_centerpoint_model import OpenpcdetCenterpointModel
 
 
-default_max_batchsize = 16
+default_max_batchsize = 32
 DEFAULT_POINTPILLAR_CFG = dict(
     model_repo="openpcdet",
     model_name="pointpillar",
