@@ -1,0 +1,7 @@
+name: predcit_head
+paras:
+  input_size: 256
+  hidden_layer: 128
+  init_group_num: 4
+  fin_layer: 12
+
