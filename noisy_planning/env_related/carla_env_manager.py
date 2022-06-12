@@ -384,6 +384,8 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
     def insert_detection_result(self, data_list):
         if self._detection_model is None:
             return
+
+        model_name = self._detection_model.get_model_name()
         # detection
         assert isinstance(self._detection_model, DetectionModelWrapper)
         max_batch_size = self._detection_model.detection_cfg.max_batch_size
@@ -397,7 +399,8 @@ class CarlaSyncSubprocessEnvManager(SyncSubprocessEnvManager):
         seg_num = len(pivots) - 1
         for i in range(seg_num):
             self.logger.debug('[DET]processing minibatch-{}...'.format(i))
-            detection_process(obs_list[pivots[i]: pivots[i + 1]], self._detection_model, self._bev_obs_config)
+            detection_process(obs_list[pivots[i]: pivots[i + 1]],
+                              self._detection_model, self._bev_obs_config, model_name)
 
     '''
     Note: error in property is dangerous, which may lead to another undesired property seeking. Be careful.

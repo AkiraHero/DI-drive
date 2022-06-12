@@ -54,10 +54,15 @@ def get_corner_nearest_dis(corners, hero_x, hero_y, hero_yaw_rad):
     return min_dist, front_
 
 
-def draw_detection_result(pred, map_width, map_height, pixel_ahead, map_pixels_per_meter):
+def draw_detection_result(pred, map_width, map_height, pixel_ahead, map_pixels_per_meter, model_name):
     # element need to fixed from map_utils.py
     # ensure the operation is same with the code inside env
     # note : the lidar coordinate must be the same with carla, which means rotation=0
+
+
+    # openpcd detection coordinate: front x right y
+    # adas_pro baseline : front x left y
+
     from core.utils.simulator_utils.map_utils import COLOR_BLACK, COLOR_WHITE
     walker_color = COLOR_WHITE
     vehicle_color = COLOR_WHITE
@@ -75,15 +80,23 @@ def draw_detection_result(pred, map_width, map_height, pixel_ahead, map_pixels_p
             i_0 = i.x * np.cos(rot) - i.y * np.sin(rot)
             i_1 = i.x * np.sin(rot) + i.y * np.cos(rot)
             # for carla coordinate
-            i.y = -(i_0 + trans_x)
-            i.x = i_1 + trans_y
+            i.y = -(i_0 + trans_x)  # rear y
+            i.x = i_1 + trans_y    # right x
 
     vehicle_surface = pygame.Surface((map_width, map_height))
     walker_surface = pygame.Surface((map_width, map_height))
     vehicle_surface.fill(COLOR_BLACK)
     walker_surface.fill(COLOR_BLACK)
-    boxes = pred['pred_boxes'].cpu().numpy()
-    labels = pred['pred_labels'].cpu().numpy()
+
+    boxes = None
+    pred_corners_list = None
+    labels = None
+    if 'b-' in model_name:
+        pred_corners_list = pred['pred_corners']
+        labels = np.array(pred['pred_labels'])
+    else:
+        boxes = pred['pred_boxes'].cpu().numpy()
+        labels = pred['pred_labels'].cpu().numpy()
 
     '''
     for fake laser reading
@@ -101,19 +114,30 @@ def draw_detection_result(pred, map_width, map_height, pixel_ahead, map_pixels_p
     =================
     '''
 
-
-
-    for bb, label in zip(boxes, labels):
-        # bb to corner
-        w_, h_, l_ = bb[3], bb[4], bb[5]
-        bb_extension = carla.Vector3D(w_ / 2.0, h_ / 2.0, l_ / 2.0)
-        corners = [
-            carla.Location(x=-bb_extension.x, y=-bb_extension.y),
-            carla.Location(x=-bb_extension.x, y=bb_extension.y),
-            carla.Location(x=bb_extension.x, y=bb_extension.y),
-            carla.Location(x=bb_extension.x, y=-bb_extension.y)
-        ]
-        trans_corners(corners, bb[6], float(bb[0]), float(bb[1]))
+    num_obj = len(labels)
+    for inx in range(num_obj):
+        if 'b-' in model_name:
+            label = labels[inx]
+            pred_corners = pred_corners_list[inx]
+            corners = [
+                carla.Location(x=float(-pred_corners[2][1]), y=float(-pred_corners[2][0])),  # left-rear
+                carla.Location(x=float(-pred_corners[3][1]), y=float(-pred_corners[3][0])),  # right-rear
+                carla.Location(x=float(-pred_corners[0][1]), y=float(-pred_corners[0][0])),  # right-front
+                carla.Location(x=float(-pred_corners[1][1]), y=float(-pred_corners[1][0]))   # left-front
+            ]
+        else:
+            bb = boxes[inx]
+            label = labels[inx]
+            # bb to corner
+            w_, h_, l_ = bb[3], bb[4], bb[5]
+            bb_extension = carla.Vector3D(w_ / 2.0, h_ / 2.0, l_ / 2.0)
+            corners = [
+                carla.Location(x=-bb_extension.x, y=-bb_extension.y),
+                carla.Location(x=-bb_extension.x, y=bb_extension.y),
+                carla.Location(x=bb_extension.x, y=bb_extension.y),
+                carla.Location(x=bb_extension.x, y=-bb_extension.y)
+            ]
+            trans_corners(corners, bb[6], float(bb[0]), float(bb[1]))  # front x, right y -> rear y, right x
 
         '''
         for fake laser reading
@@ -191,16 +215,20 @@ def check_obs_id(data_list):
     print("next_ids:", next_ids)
 
 
-def detection_process(data_list, detector, env_bev_obs_cfg, keep_ini=False):
+def detection_process(data_list, detector, env_bev_obs_cfg, model_name, keep_ini=False):
     # 1. extract batch
-    batch_points = []
+    batch_data = []
     for i in data_list:
-        p_frm = i['lidar_points']
-        batch_points.append({'points': validate_point_size(p_frm)})
-        # visualize_points(p_frm_cur)
+        if 'baseline_data' in i.keys():
+            batch_data.append(i['baseline_data'])
+        else:
+            p_frm = i['lidar_points']
+            batch_data.append({'points': validate_point_size(p_frm)})
+            # visualize_points(p_frm_cur)
+
 
     # 2. inference
-    detection_res = detector.forward(batch_points)
+    detection_res = detector.forward(batch_data)
 
     # 3. distribute and draw obs on bev
     for inx, (i, j) in enumerate(zip(data_list, detection_res)):
@@ -218,7 +246,7 @@ def detection_process(data_list, detector, env_bev_obs_cfg, keep_ini=False):
         pixel_per_meter = env_bev_obs_cfg.pixels_per_meter
 
         detection_surface = draw_detection_result(j,
-                                                  map_width, map_height, pixel_ahead, pixel_per_meter)
+                                                  map_width, map_height, pixel_ahead, pixel_per_meter, model_name)
         # substitute the 2,3 dim of bev using detection results
         vehicle_dim = detection_surface['det_vehicle_surface']
         walker_dim = detection_surface['det_walker_surface']

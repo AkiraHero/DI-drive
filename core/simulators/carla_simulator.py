@@ -18,6 +18,7 @@ from core.utils.others.tcp_helper import find_traffic_manager_port
 from core.utils.simulator_utils.spawn_points_pool import SpawnPointsPool
 from core.utils.simulator_utils.carla_utils import get_lane_marker_dis, get_neibor_obj_bev_box, get_neibor_obj_feature
 from core.utils.simulator_utils.fake_laser_sensor import get_neibor_obj_laser_reading
+from core.utils.simulator_utils.baseline_data_getter import BaselineDataWrapper
 
 import carla
 from carla import WeatherParameters
@@ -43,7 +44,7 @@ PRESET_WEATHERS = {
 
 VEHICLE_NAME = 'vehicle.tesla.model3'
 ROLE_NAME = 'hero'
-OBS_TYPE_LIST = ['state', 'depth', 'rgb', 'segmentation', 'bev', 'lidar', 'gnss']
+OBS_TYPE_LIST = ['state', 'depth', 'rgb', 'segmentation', 'bev', 'lidar', 'gnss', 'baseline']
 
 PLANNER_DICT = {
     'basic': BasicPlanner,
@@ -216,6 +217,9 @@ class CarlaSimulator(BaseSimulator):
 
         self._actor_map = defaultdict(list)
         self._debug = self._cfg.debug
+
+        # add for get baseline data
+        self._baseline_data_wrapper = None
 
     def _apply_world_setting(self, **world_param) -> None:
         for k in world_param:
@@ -564,6 +568,9 @@ class CarlaSimulator(BaseSimulator):
             if obs_item.type == 'bev':
                 self._bev_wrapper = BeVWrapper(obs_item)
                 self._bev_wrapper.init(self._client, self._world, self._map, self._hero_actor)
+            if obs_item.type == 'baseline':
+                self._baseline_data_wrapper = BaselineDataWrapper(obs_item)
+                self._baseline_data_wrapper.init(self._world, self._hero_actor)
         planner_cls = PLANNER_DICT[self._planner_cfg.get('type', 'basic')]
         self._planner = planner_cls(self._planner_cfg)
         self._collision_sensor = CollisionSensor(self._hero_actor, self._col_threshold)
@@ -721,6 +728,9 @@ class CarlaSimulator(BaseSimulator):
             elif obs_item.type == 'bev':
                 key = obs_item.name
                 sensor_data.update({key: get_birdview(self._bev_wrapper.get_bev_data())})
+            elif obs_item.type == 'baseline':
+                key = obs_item.name
+                sensor_data.update({key: self._baseline_data_wrapper.get_frame_data()})
                 # sensor_data.update({key + "_initial_dict": self._bev_wrapper.get_bev_data()})
         return sensor_data
 
@@ -916,6 +926,7 @@ class CarlaSimulator(BaseSimulator):
         if self._bev_wrapper is not None:
             if CarlaDataProvider._hero_vehicle_route is not None:
                 self._bev_wrapper.tick()
+        self._baseline_data_wrapper.update_all_actors()
 
     def apply_control(self, control: Dict = None) -> None:
         """

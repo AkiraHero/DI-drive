@@ -42,6 +42,12 @@ ppo_config = dict(
                     fixed_pt_num=40000,
                 ),
                 dict(
+                    name='baseline_data',
+                    type='baseline',
+                    map_root='/home/akira/Project/Model_behaviour/Maps',
+                    town_name='Town05',
+                ),
+                dict(
                     name='linelidar',
                     type='lidar',
                     channels=1,
@@ -57,7 +63,7 @@ ppo_config = dict(
             ),
         ),
         enable_detector=True,
-        detector="pointpillar",  # pointpillar/pvrcnn/centerpoint/fake-pointpillar/fake-pvrcnn/fake-centerpoint/
+        detector="b-pointpillar",  # pointpillar/pvrcnn/centerpoint/fake-pointpillar/fake-pvrcnn/fake-centerpoint/
         col_is_failure=True,
         stuck_is_failure=True,
         ignore_light=True,

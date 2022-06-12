@@ -131,6 +131,9 @@ def get_obs_out(obs):
 
     if 'toplidar' in obs.keys():
         obs_out['lidar_points'] = obs['toplidar']
+
+    if 'baseline_data' in obs.keys():
+        obs_out['baseline_data'] = obs['baseline_data']
     return obs_out
 
 
